@@ -1,17 +1,58 @@
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, MapPin, Star } from "lucide-react";
+import { api, Accommodation } from "@/services/api";
 
 const HeroSection = () => {
+  const [featuredProperties, setFeaturedProperties] = useState<Accommodation[]>([]);
+  const [currentPropertyIndex, setCurrentPropertyIndex] = useState(0);
+
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        const properties = await api.getProperties();
+        // Take first 3-5 properties for the carousel
+        setFeaturedProperties(properties.slice(0, 5));
+      } catch (err) {
+        console.error('Error fetching properties for hero:', err);
+      }
+    };
+    fetchProperties();
+  }, []);
+
+  // Auto-rotate properties carousel
+  useEffect(() => {
+    if (featuredProperties.length <= 1) return;
+    
+    const interval = setInterval(() => {
+      setCurrentPropertyIndex((prev) => (prev + 1) % featuredProperties.length);
+    }, 3500); // Quick transition every 3.5 seconds
+
+    return () => clearInterval(interval);
+  }, [featuredProperties.length]);
+
+  const currentProperty = featuredProperties[currentPropertyIndex];
+  const propertyImage = currentProperty?.images?.[0] || "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=600&h=800&fit=crop";
+  const propertyName = currentProperty?.name || "Luxury Resort";
+  const propertyPrice = currentProperty?.adult_price || currentProperty?.price || 299;
+
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden -mt-16 md:-mt-20">
       {/* Background Image/Gradient */}
       <div className="absolute inset-0 bg-hero-gradient" />
-      <div 
-        className="absolute inset-0 bg-cover bg-center opacity-30"
-        style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=1920&h=1080&fit=crop')"
-        }}
-      />
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentPropertyIndex}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.3 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.6 }}
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage: `url('${propertyImage}')`
+          }}
+        />
+      </AnimatePresence>
       
       {/* Decorative Elements */}
       <div className="absolute inset-0 overflow-hidden">
@@ -98,7 +139,7 @@ const HeroSection = () => {
             </div>
           </motion.div>
 
-          {/* Hero Image Card */}
+          {/* Hero Image Card with Property Carousel */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9, rotateY: -10 }}
             animate={{ opacity: 1, scale: 1, rotateY: 0 }}
@@ -106,30 +147,59 @@ const HeroSection = () => {
             className="relative hidden lg:block"
           >
             <div className="relative rounded-3xl overflow-hidden shadow-elevated">
-              <img
-                src="https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=600&h=800&fit=crop"
-                alt="Luxury Resort"
-                className="w-full h-[500px] object-cover"
-              />
+              <AnimatePresence mode="wait">
+                <motion.img
+                  key={currentPropertyIndex}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.6 }}
+                  src={propertyImage}
+                  alt={propertyName}
+                  className="w-full h-[500px] object-cover"
+                />
+              </AnimatePresence>
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
               
-              {/* Floating Card */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8 }}
-                className="absolute bottom-6 left-6 right-6 glass-effect rounded-2xl p-4"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center">
-                    <MapPin className="w-6 h-6 text-accent-foreground" />
+              {/* Floating Card with Property Info */}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentPropertyIndex}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.5 }}
+                  className="absolute bottom-6 left-6 right-6 glass-effect rounded-2xl p-4"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center">
+                      <MapPin className="w-6 h-6 text-accent-foreground" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{propertyName}</p>
+                      <p className="text-sm text-muted-foreground">Starting from ₹{propertyPrice}/night</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-foreground">Mountain View Villa</p>
-                    <p className="text-sm text-muted-foreground">Starting from $299/night</p>
-                  </div>
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Carousel Indicators */}
+              {featuredProperties.length > 1 && (
+                <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex gap-2">
+                  {featuredProperties.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentPropertyIndex(idx)}
+                      className={`h-1.5 rounded-full transition-all ${
+                        idx === currentPropertyIndex 
+                          ? 'bg-white w-6' 
+                          : 'bg-white/50 w-1.5 hover:bg-white/70'
+                      }`}
+                      aria-label={`Go to property ${idx + 1}`}
+                    />
+                  ))}
                 </div>
-              </motion.div>
+              )}
             </div>
 
             {/* Decorative floating elements */}
