@@ -68,7 +68,7 @@ const HeroSection = () => {
         />
       </div>
 
-      <div className="container mx-auto px-4 relative z-10 pt-32 pb-16 md:pt-40 md:pb-24">
+      <div className="container mx-auto px-4 relative z-10 pt-40 pb-24 md:pt-52 md:pb-24">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Content */}
           <motion.div
@@ -81,7 +81,7 @@ const HeroSection = () => {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.2 }}
-              className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full mb-6"
+              className="hidden md:inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full mb-6"
             >
               <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
               <span className="text-white/90 text-sm font-medium">Award Winning Resort</span>
@@ -119,7 +119,7 @@ const HeroSection = () => {
             </div>
 
             {/* Stats */}
-            <div className="flex items-center justify-center lg:justify-start gap-8 mt-12">
+            <div className="hidden md:flex items-center justify-center lg:justify-start gap-8 mt-12">
               {[
                 { value: "50+", label: "Properties" },
                 { value: "12K+", label: "Happy Guests" },
