@@ -1,103 +1,77 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Star, MapPin, Users, Wifi, Car, Heart } from "lucide-react";
-
-const properties = [
-  {
-    id: 1,
-    name: "Serene Forest Villa",
-    location: "Mountain Haven",
-    price: 349,
-    rating: 4.9,
-    reviews: 128,
-    guests: 6,
-    image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&h=400&fit=crop",
-    amenities: ["WiFi", "Parking"],
-    type: "Villa",
-  },
-  {
-    id: 2,
-    name: "Lakeside Cottage",
-    location: "Lake Serenity",
-    price: 199,
-    rating: 4.8,
-    reviews: 89,
-    guests: 4,
-    image: "https://images.unsplash.com/photo-1449158743715-0a90ebb6d2d8?w=600&h=400&fit=crop",
-    amenities: ["WiFi", "Parking"],
-    type: "Cottage",
-  },
-  {
-    id: 3,
-    name: "Beachfront Bungalow",
-    location: "Coastal Paradise",
-    price: 279,
-    rating: 4.9,
-    reviews: 156,
-    guests: 4,
-    image: "https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=600&h=400&fit=crop",
-    amenities: ["WiFi", "Parking"],
-    type: "Bungalow",
-  },
-  {
-    id: 4,
-    name: "Luxury Safari Camp",
-    location: "Desert Oasis",
-    price: 449,
-    rating: 5.0,
-    reviews: 67,
-    guests: 2,
-    image: "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=600&h=400&fit=crop",
-    amenities: ["WiFi"],
-    type: "Camp",
-  },
-  {
-    id: 5,
-    name: "Treetop Hideaway",
-    location: "Forest Retreat",
-    price: 229,
-    rating: 4.7,
-    reviews: 94,
-    guests: 2,
-    image: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=600&h=400&fit=crop",
-    amenities: ["WiFi"],
-    type: "Treehouse",
-  },
-  {
-    id: 6,
-    name: "Mountain Peak Cabin",
-    location: "Mountain Haven",
-    price: 189,
-    rating: 4.8,
-    reviews: 112,
-    guests: 4,
-    image: "https://images.unsplash.com/photo-1587061949409-02df41d5e562?w=600&h=400&fit=crop",
-    amenities: ["WiFi", "Parking"],
-    type: "Cottage",
-  },
-];
+import { Star, MapPin, Users, Wifi, Car, Heart, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { api, Accommodation } from "@/services/api";
 
 const PropertiesSection = () => {
-  return (
-    <section id="properties" className="py-16 md:py-24 bg-section-gradient">
-      <div className="container mx-auto px-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
-          <span className="text-accent font-medium text-sm uppercase tracking-wider">Our Properties</span>
-          <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mt-2 mb-4">
-            Featured Stays
-          </h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Handpicked accommodations for the perfect escape, each with its own unique charm.
-          </p>
-        </motion.div>
+  const navigate = useNavigate();
+  const [properties, setProperties] = useState<Accommodation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        setLoading(true);
+        const data = await api.getProperties();
+        setProperties(data);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching properties:', err);
+        setError('Failed to load properties. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProperties();
+  }, []);
+
+  if (loading) {
+    return (
+      <section id="properties" className="pb-16 md:pb-24 pt-6 bg-section-gradient">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+              <p className="text-muted-foreground">Loading properties...</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section id="properties" className="pb-16 md:pb-24 pt-6 bg-section-gradient">
+        <div className="container mx-auto px-4">
+          <div className="text-center py-20">
+            <p className="text-destructive mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-primary hover:underline"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section id="properties" className="pb-16 md:pb-24 pt-6 bg-section-gradient">
+      <div className="container mx-auto px-4">
         {/* Properties Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-          {properties.map((property, index) => (
+          {properties.map((property, index) => {
+            const mainImage = Array.isArray(property.images) && property.images.length > 0 
+              ? property.images[0] 
+              : "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&h=400&fit=crop";
+            
+            return (
             <motion.div
               key={property.id}
               initial={{ opacity: 0, y: 30 }}
@@ -110,7 +84,7 @@ const PropertiesSection = () => {
                 {/* Image */}
                 <div className="relative h-56 md:h-64 overflow-hidden">
                   <img
-                    src={property.image}
+                    src={mainImage}
                     alt={property.name}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                   />
@@ -137,12 +111,11 @@ const PropertiesSection = () => {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <MapPin className="w-4 h-4" />
-                      <span className="text-sm">{property.location}</span>
+                      <span className="text-sm">{property.address || 'Location'}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                      <span className="text-sm font-medium">{property.rating}</span>
-                      <span className="text-xs text-muted-foreground">({property.reviews})</span>
+                      <span className="text-sm font-medium">4.8</span>
                     </div>
                   </div>
 
@@ -155,15 +128,15 @@ const PropertiesSection = () => {
                   <div className="flex items-center gap-4 mb-4">
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <Users className="w-4 h-4" />
-                      <span className="text-sm">{property.guests} guests</span>
+                      <span className="text-sm">{property.capacity} guests</span>
                     </div>
-                    {property.amenities.includes("WiFi") && (
+                    {property.features?.some((f: string) => f.toLowerCase().includes('wifi')) && (
                       <div className="flex items-center gap-1.5 text-muted-foreground">
                         <Wifi className="w-4 h-4" />
                         <span className="text-sm">WiFi</span>
                       </div>
                     )}
-                    {property.amenities.includes("Parking") && (
+                    {property.features?.some((f: string) => f.toLowerCase().includes('parking')) && (
                       <div className="flex items-center gap-1.5 text-muted-foreground">
                         <Car className="w-4 h-4" />
                         <span className="text-sm">Parking</span>
@@ -174,12 +147,13 @@ const PropertiesSection = () => {
                   {/* Price & CTA */}
                   <div className="flex items-center justify-between pt-4 border-t border-border">
                     <div>
-                      <span className="text-2xl font-bold text-foreground">${property.price}</span>
+                      <span className="text-2xl font-bold text-foreground">₹{property.price || property.adult_price || 0}</span>
                       <span className="text-muted-foreground text-sm"> / night</span>
                     </div>
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
+                      onClick={() => navigate(`/book/${property.id}`)}
                       className="bg-primary text-primary-foreground px-5 py-2.5 rounded-full text-sm font-medium hover:bg-primary/90 transition-colors"
                     >
                       Book Now
@@ -188,7 +162,8 @@ const PropertiesSection = () => {
                 </div>
               </div>
             </motion.div>
-          ))}
+            );
+          })}
         </div>
 
         {/* View All Button */}

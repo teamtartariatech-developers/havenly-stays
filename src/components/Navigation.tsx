@@ -1,11 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Phone } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      setIsScrolled(scrollY > 100);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const navItems = [
     { name: "Home", path: "/" },
@@ -23,7 +34,11 @@ const Navigation = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 glass-effect">
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      isScrolled 
+        ? 'glass-effect bg-section-gradient/95 backdrop-blur-md shadow-sm' 
+        : 'bg-transparent'
+    }`}>
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
@@ -31,7 +46,9 @@ const Navigation = () => {
             <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
               <span className="text-primary-foreground font-display text-lg font-bold">E</span>
             </div>
-            <span className="font-display text-xl font-semibold text-foreground">Evergreen</span>
+            <span className={`font-display text-xl font-semibold transition-colors ${
+              isScrolled ? 'text-foreground' : 'text-white'
+            }`}>Evergreen</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -42,7 +59,11 @@ const Navigation = () => {
                 to={item.path}
                 onClick={() => handleNavClick(item.path)}
                 className={`text-sm font-medium transition-colors hover:text-primary ${
-                  location.pathname === item.path ? "text-primary" : "text-muted-foreground"
+                  location.pathname === item.path 
+                    ? "text-primary" 
+                    : isScrolled 
+                      ? "text-muted-foreground" 
+                      : "text-white/90"
                 }`}
               >
                 {item.name}
@@ -60,7 +81,9 @@ const Navigation = () => {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="md:hidden p-2 rounded-lg hover:bg-secondary transition-colors"
+            className={`md:hidden p-2 rounded-lg transition-colors ${
+              isScrolled ? 'hover:bg-secondary' : 'hover:bg-white/10 text-white'
+            }`}
           >
             {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -74,7 +97,11 @@ const Navigation = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden glass-effect border-t border-border"
+            className={`md:hidden border-t transition-colors ${
+              isScrolled 
+                ? 'glass-effect border-border' 
+                : 'bg-white/10 backdrop-blur-md border-white/20'
+            }`}
           >
             <div className="container mx-auto px-4 py-6 space-y-4">
               {navItems.map((item, index) => (
@@ -87,7 +114,9 @@ const Navigation = () => {
                   <Link
                     to={item.path}
                     onClick={() => handleNavClick(item.path)}
-                    className="block py-2 text-lg font-medium text-foreground hover:text-primary transition-colors"
+                    className={`block py-2 text-lg font-medium hover:text-primary transition-colors ${
+                      isScrolled ? 'text-foreground' : 'text-white'
+                    }`}
                   >
                     {item.name}
                   </Link>

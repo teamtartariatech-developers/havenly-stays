@@ -3,9 +3,15 @@ import { ArrowRight, MapPin, Star } from "lucide-react";
 
 const HeroSection = () => {
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden">
-      {/* Background Gradient */}
+    <section className="relative min-h-screen flex items-center overflow-hidden -mt-16 md:-mt-20">
+      {/* Background Image/Gradient */}
       <div className="absolute inset-0 bg-hero-gradient" />
+      <div 
+        className="absolute inset-0 bg-cover bg-center opacity-30"
+        style={{
+          backgroundImage: "url('https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=1920&h=1080&fit=crop')"
+        }}
+      />
       
       {/* Decorative Elements */}
       <div className="absolute inset-0 overflow-hidden">
@@ -21,7 +27,7 @@ const HeroSection = () => {
         />
       </div>
 
-      <div className="container mx-auto px-4 relative z-10 pt-24 pb-16 md:pt-32 md:pb-24">
+      <div className="container mx-auto px-4 relative z-10 pt-32 pb-16 md:pt-40 md:pb-24">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Content */}
           <motion.div
