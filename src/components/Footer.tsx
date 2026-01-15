@@ -15,23 +15,19 @@ const Footer = () => {
           >
             <div className="flex items-center gap-2 mb-6">
               <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center">
-                <span className="text-forest-700 font-display text-lg font-bold">E</span>
+                <span className="text-forest-700 font-display text-lg font-bold">H</span>
               </div>
-              <span className="font-display text-xl font-semibold">Evergreen</span>
+              <span className="font-display text-xl font-semibold">Havenly Stays</span>
             </div>
             <p className="text-white/70 leading-relaxed mb-6">
-              Discover extraordinary stays in nature's most beautiful settings. 
-              Your perfect escape awaits.
+              Experience the perfect lakeside getaway with our premium cottages, luxury villas and exciting activities at Pawna Lake.
             </p>
             <div className="flex gap-4">
-              <a href="#" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+              <a href="https://www.instagram.com/plumeriaretreatpawnalake?utm_source=qr&igsh=OGgzYWY0b3FzbWUw" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
                 <Instagram className="w-5 h-5" />
               </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+              <a href="https://www.facebook.com/share/19pYGAqJzH/" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
                 <Facebook className="w-5 h-5" />
-              </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
-                <Twitter className="w-5 h-5" />
               </a>
             </div>
           </motion.div>
@@ -84,21 +80,21 @@ const Footer = () => {
             <h4 className="font-display text-lg font-semibold mb-6">Contact Us</h4>
             <ul className="space-y-4">
               <li>
-                <a href="#" className="flex items-start gap-3 text-white/70 hover:text-white transition-colors">
+                <a href="https://maps.google.com/?q=At-Bramhanoli,+Fangne,+Post-+Pawna+nagar,+Tel-+Maval,+Dist-+Pune,+Maharashtra+410406" target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 text-white/70 hover:text-white transition-colors">
                   <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                  <span>123 Resort Lane, Paradise Valley, CA 90210</span>
+                  <span>At-Bramhanoli, Fangne, Post- Pawna nagar, Tel- Maval, Dist- Pune, Pawna Lake, Maharashtra 410406</span>
                 </a>
               </li>
               <li>
-                <a href="tel:+1234567890" className="flex items-center gap-3 text-white/70 hover:text-white transition-colors">
+                <a href="tel:+919226869678" className="flex items-center gap-3 text-white/70 hover:text-white transition-colors">
                   <Phone className="w-5 h-5" />
-                  <span>+1 (234) 567-890</span>
+                  <span>+91 9226869678</span>
                 </a>
               </li>
               <li>
-                <a href="mailto:hello@evergreen.com" className="flex items-center gap-3 text-white/70 hover:text-white transition-colors">
+                <a href="mailto:campatpawna@gmail.com" className="flex items-center gap-3 text-white/70 hover:text-white transition-colors">
                   <Mail className="w-5 h-5" />
-                  <span>hello@evergreen.com</span>
+                  <span>campatpawna@gmail.com</span>
                 </a>
               </li>
             </ul>
@@ -109,7 +105,7 @@ const Footer = () => {
         <div className="pt-8 border-t border-white/10">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-white/50 text-sm text-center md:text-left">
-              © 2026 Evergreen Resorts. All rights reserved.
+              © {new Date().getFullYear()} Gecestays. All rights reserved.
             </p>
             <div className="flex gap-6 text-sm text-white/50">
               <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>

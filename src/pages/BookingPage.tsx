@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import { DayPicker } from "react-day-picker";
 import { format, addDays, differenceInDays } from "date-fns";
 import { 
@@ -19,7 +21,12 @@ import {
   Utensils,
   ChevronDown,
   ChevronUp,
-  X
+  X,
+  User,
+  Mail,
+  Phone,
+  UtensilsCrossed,
+  MessageCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +35,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { api, Accommodation } from "@/services/api";
 import { initiatePayment, handlePaymentRedirect } from "@/utils/payment";
+import { updatePageMeta } from "@/utils/seo";
 import { Loader2 } from "lucide-react";
 import "react-day-picker/dist/style.css";
 
@@ -42,6 +50,18 @@ interface FoodCounts {
   jain: number;
 }
 
+interface Coupon {
+  id: number;
+  code: string;
+  discountType: 'fixed' | 'percentage';
+  discount: string;
+  minAmount: string;
+  maxDiscount?: string | null;
+  expiryDate: string;
+  active: number;
+  accommodationType: string;
+}
+
 const BookingPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -52,6 +72,7 @@ const BookingPage = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<{ from: Date; to?: Date } | undefined>();
+  const [minAvailableRooms, setMinAvailableRooms] = useState<number | null>(null);
   const [rooms, setRooms] = useState(1);
   const [roomGuests, setRoomGuests] = useState<RoomGuest[]>([{ adults: 2, children: 0 }]);
   const [foodCounts, setFoodCounts] = useState<FoodCounts>({ veg: 2, nonveg: 0, jain: 0 });
@@ -63,6 +84,28 @@ const BookingPage = () => {
   // Touch/swipe handlers for image gallery
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
+  
+  // Coupon State
+  const [coupon, setCoupon] = useState('');
+  const [couponApplied, setCouponApplied] = useState(false);
+  const [discount, setDiscount] = useState(0);
+  const [allAvailableCoupons, setAllAvailableCoupons] = useState<Coupon[]>([]);
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [couponError, setCouponError] = useState<string>('');
+  
+  const getDateStringsInRange = (start: Date, end: Date) => {
+    const dates: string[] = [];
+    let current = new Date(start);
+    current.setHours(0, 0, 0, 0);
+    const endDate = new Date(end);
+    endDate.setHours(0, 0, 0, 0);
+
+    while (current < endDate) {
+      dates.push(format(current, "yyyy-MM-dd"));
+      current = addDays(current, 1);
+    }
+    return dates;
+  };
   
   // Form State
   const [formData, setFormData] = useState({
@@ -108,6 +151,65 @@ const BookingPage = () => {
     };
     fetchData();
   }, [id, navigate, toast]);
+
+  useEffect(() => {
+    if (!property) return;
+    const canonical = `${window.location.origin}/book/${property.id}`;
+    updatePageMeta({
+      title: `${property.name} | Book Your Stay - Havenly Stays`,
+      description:
+        property.description ||
+        `Reserve ${property.name} at Pawna Lake. Explore amenities, pricing, and availability to plan your stay.`,
+      canonical,
+      ogImage:
+        property.images?.[0] ||
+        "https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=1200&h=630&fit=crop",
+    });
+  }, [property]);
+
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      if (!property || !dateRange?.from || !dateRange?.to) {
+        setMinAvailableRooms(null);
+        return;
+      }
+      const dates = getDateStringsInRange(dateRange.from, dateRange.to);
+      if (dates.length === 0) {
+        setMinAvailableRooms(null);
+        return;
+      }
+      try {
+        const availability = await api.checkAvailability(property.id, dates);
+        setMinAvailableRooms(
+          typeof availability?.min_available_rooms === "number"
+            ? availability.min_available_rooms
+            : null
+        );
+      } catch (error) {
+        console.error("Error checking availability:", error);
+        setMinAvailableRooms(null);
+      }
+    };
+
+    fetchAvailability();
+  }, [property, dateRange?.from, dateRange?.to]);
+
+  // Fetch coupons
+  useEffect(() => {
+    const fetchCoupons = async () => {
+      try {
+        const coupons = await api.getCoupons();
+        const currentDate = new Date();
+        const activeCoupons = coupons.filter((coupon: Coupon) =>
+          coupon.active === 1 && new Date(coupon.expiryDate) > currentDate
+        );
+        setAllAvailableCoupons(activeCoupons);
+      } catch (error) {
+        console.error('Error fetching coupons:', error);
+      }
+    };
+    fetchCoupons();
+  }, []);
 
   const nextImage = () => {
     if (!property?.images) return;
@@ -189,6 +291,58 @@ const BookingPage = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [lightboxOpen, property?.images]);
 
+  // Calculate totals - must be before early returns
+  const totalAdults = roomGuests.reduce((sum, r) => sum + r.adults, 0);
+  const totalChildren = roomGuests.reduce((sum, r) => sum + r.children, 0);
+  const totalGuests = totalAdults + totalChildren;
+  const maxRoomsForSelection = Math.max(
+    1,
+    Math.min(property?.rooms || 5, minAvailableRooms ?? (property?.rooms || 5))
+  );
+
+  // Calculate discount when coupon is applied
+  // Note: This must be before early returns to follow Rules of Hooks
+  useEffect(() => {
+    if (!couponApplied || !appliedCoupon || !dateRange?.from || !dateRange?.to || !property) {
+      setDiscount(0);
+      return;
+    }
+
+    const nights = differenceInDays(dateRange.to, dateRange.from);
+    if (nights === 0) {
+      setDiscount(0);
+      return;
+    }
+
+    const pricePerNight = property.adult_price || property.price || 0;
+    const childPrice = property.child_price || 0;
+    const currentSubtotal = (totalAdults * pricePerNight + totalChildren * childPrice) * nights;
+
+    if (currentSubtotal < parseFloat(appliedCoupon.minAmount)) {
+      setDiscount(0);
+      setCouponApplied(false);
+      setAppliedCoupon(null);
+      setCoupon('');
+      setCouponError(`Minimum amount for this coupon is ₹${appliedCoupon.minAmount}`);
+      return;
+    }
+
+    let calculatedDiscount = 0;
+    if (appliedCoupon.discountType === 'fixed') {
+      calculatedDiscount = parseFloat(appliedCoupon.discount);
+    } else if (appliedCoupon.discountType === 'percentage') {
+      const percent = parseFloat(appliedCoupon.discount);
+      calculatedDiscount = (currentSubtotal * percent) / 100;
+      if (appliedCoupon.maxDiscount) {
+        const maxAllowed = parseFloat(appliedCoupon.maxDiscount);
+        calculatedDiscount = Math.min(calculatedDiscount, maxAllowed);
+      }
+    }
+
+    const finalDiscount = Math.min(calculatedDiscount, currentSubtotal);
+    setDiscount(finalDiscount);
+  }, [couponApplied, appliedCoupon, totalAdults, totalChildren, property, dateRange, roomGuests]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -213,12 +367,11 @@ const BookingPage = () => {
     );
   }
 
-  const totalAdults = roomGuests.reduce((sum, r) => sum + r.adults, 0);
-  const totalChildren = roomGuests.reduce((sum, r) => sum + r.children, 0);
-  const totalGuests = totalAdults + totalChildren;
-
   const handleRoomsChange = (newRooms: number) => {
-    const validRooms = Math.max(1, Math.min(newRooms, property?.rooms || 5));
+    const propertyRooms = property?.rooms || 5;
+    const availabilityCap = minAvailableRooms ?? propertyRooms;
+    const maxRooms = Math.max(1, Math.min(propertyRooms, availabilityCap));
+    const validRooms = Math.max(1, Math.min(newRooms, maxRooms));
     setRooms(validRooms);
     
     setRoomGuests(prev => {
@@ -306,14 +459,98 @@ const BookingPage = () => {
   // Calculate total based on per-person pricing if available
   const subtotal = (totalAdults * pricePerNight + totalChildren * childPrice) * nights;
   const serviceFee = Math.round(subtotal * 0.05); // 5% service fee
-  const total = subtotal + serviceFee;
+  const totalBeforeDiscount = subtotal + serviceFee;
+  const total = Math.max(0, totalBeforeDiscount - discount);
   const advanceAmount = Math.round(total * 0.3); // 30% advance
+
+  const handleApplyCoupon = async () => {
+    const code = coupon.trim().toUpperCase();
+    setCouponError('');
+
+    if (!code) {
+      setCouponError('Please enter a coupon code');
+      return;
+    }
+
+    if (!dateRange?.from || !dateRange?.to) {
+      setCouponError('Please select dates first');
+      return;
+    }
+
+    try {
+      const foundCoupon = allAvailableCoupons.find(
+        (c: Coupon) => c.code.toUpperCase() === code
+      );
+
+      if (!foundCoupon) {
+        setCouponError('Invalid coupon code');
+        return;
+      }
+
+      if (foundCoupon.active !== 1) {
+        setCouponError('This coupon is no longer active');
+        return;
+      }
+
+      const now = new Date();
+      const expiryDate = new Date(foundCoupon.expiryDate);
+      if (expiryDate < now) {
+        setCouponError('This coupon has expired');
+        return;
+      }
+
+      const couponAccommodationType = foundCoupon.accommodationType?.trim() || '';
+      const currentAccommodationName = property?.name?.trim() || '';
+
+      if (couponAccommodationType.toLowerCase() !== 'all' &&
+        couponAccommodationType !== currentAccommodationName) {
+        setCouponError('This coupon is not valid for this accommodation');
+        return;
+      }
+
+      if (subtotal < parseFloat(foundCoupon.minAmount)) {
+        setCouponError(`Minimum amount for this coupon is ₹${foundCoupon.minAmount}`);
+        return;
+      }
+
+      setAppliedCoupon(foundCoupon);
+      setCoupon(code);
+      setCouponApplied(true);
+      setCouponError('');
+      
+      toast({
+        title: "Coupon Applied!",
+        description: `Discount of ₹${foundCoupon.discountType === 'fixed' ? foundCoupon.discount : foundCoupon.discount + '%'} applied successfully.`,
+      });
+
+    } catch (error: any) {
+      console.error('Coupon application error:', error);
+      setCouponError(error.message || 'Failed to apply coupon');
+      setDiscount(0);
+      setCouponApplied(false);
+      setAppliedCoupon(null);
+    }
+  };
+
+  const handleCouponSelect = (selectedCoupon: Coupon) => {
+    setCoupon(selectedCoupon.code);
+    setCouponError('');
+  };
 
   const handleBooking = async () => {
     if (!dateRange?.from || !dateRange?.to) {
       toast({
         title: "Select Dates",
         description: "Please select your check-in and check-out dates.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (minAvailableRooms !== null && rooms > minAvailableRooms) {
+      toast({
+        title: "Limited Availability",
+        description: `Only ${minAvailableRooms} room(s) available for selected dates.`,
         variant: "destructive"
       });
       return;
@@ -345,6 +582,7 @@ const BookingPage = () => {
       // Create booking
       const bookingPayload = {
         accommodation_id: property.id,
+        package_id: 0,
         check_in: format(dateRange.from, 'yyyy-MM-dd'),
         check_out: format(dateRange.to, 'yyyy-MM-dd'),
         rooms: rooms,
@@ -359,6 +597,7 @@ const BookingPage = () => {
         food_veg: foodCounts.veg,
         food_nonveg: foodCounts.nonveg,
         food_jain: foodCounts.jain,
+        coupon_code: couponApplied ? coupon : undefined,
       };
 
       const bookingResponse = await api.createBooking(bookingPayload);
@@ -395,9 +634,197 @@ const BookingPage = () => {
     }
   };
 
+  const handleDownloadPdf = async () => {
+    if (!dateRange?.from || !dateRange?.to) {
+      toast({
+        title: "Select Dates",
+        description: "Please select your check-in and check-out dates first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!property) return;
+
+    const bookingDate = format(new Date(), "yyyy-MM-dd");
+    const bookingId = `PREVIEW-${property.id}`;
+    const checkInDate = format(dateRange.from, "yyyy-MM-dd");
+    const checkOutDate = format(dateRange.to, "yyyy-MM-dd");
+    const fullAmount = totalBeforeDiscount;
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Booking Confirmation</title>
+    <style>
+      body { margin: 0; padding: 0; background: #f5f7f9; font-family: "Lato", Arial, sans-serif; color: #1f2933; }
+      .container { max-width: 680px; margin: 0 auto; background: #ffffff; }
+      .header { background: #0f6f5c; color: #ffffff; padding: 28px 32px; }
+      .header h1 { margin: 0; font-size: 22px; font-weight: 700; }
+      .header p { margin: 6px 0 0; font-size: 13px; opacity: 0.9; }
+      .section { padding: 24px 32px; }
+      .title { font-size: 18px; margin: 0 0 8px; }
+      .card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; }
+      .grid { width: 100%; border-collapse: collapse; }
+      .grid td { padding: 4px 0; font-size: 13px; }
+      .divider { height: 1px; background: #e5e7eb; margin: 16px 0; }
+      .badge { display: inline-block; background: #e6f4ef; color: #0f6f5c; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+      .footer { background: #0f172a; color: #e2e8f0; padding: 20px 32px; font-size: 12px; }
+      .link { color: #0f6f5c; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f5f7f9;">
+      <tr>
+        <td>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" class="container">
+            <tr>
+              <td class="header">
+                <h1>${property.name}</h1>
+                <p>Booking ID: <strong>${bookingId}</strong> | Booking Date: ${bookingDate}</p>
+              </td>
+            </tr>
+            <tr>
+              <td class="section">
+                <p><strong>Dear ${formData.name || "Guest"},</strong></p>
+                <p style="margin: 8px 0 0;">
+                  ${property.name} has received a request for booking as per the details below. The
+                  primary guest ${formData.name || "Guest"} will be carrying a copy of this e-voucher.
+                </p>
+                <p style="margin: 8px 0 0;">For your reference, Booking ID is <strong>${bookingId}</strong>.</p>
+                <p style="margin: 8px 0 0;">
+                  <strong>The amount payable to ${property.name} for this booking is INR ${advanceAmount}. Please email us at
+                  <a class="link" href="mailto:campatpawna@gmail.com">campatpawna@gmail.com</a> if there is any discrepancy in this payment amount.</strong>
+                </p>
+                <p style="margin: 12px 0 0;">Kindly consider this e-voucher for booking confirmation with the following inclusions and services.</p>
+                <div style="margin-top: 12px;"><span class="badge">All prices indicated below are in INR</span></div>
+              </td>
+            </tr>
+            <tr>
+              <td class="section">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td width="50%" style="padding-right: 8px;">
+                      <div class="card">
+                        <h3 class="title">Booking Details</h3>
+                        <table class="grid">
+                          <tr><td>Mobile:</td><td><strong>${formData.phone || "-"}</strong></td></tr>
+                          <tr><td>Check In:</td><td><strong>${checkInDate}</strong></td></tr>
+                          <tr><td>Check Out:</td><td><strong>${checkOutDate}</strong></td></tr>
+                          <tr><td>Total Person:</td><td><strong>${totalGuests}</strong></td></tr>
+                          <tr><td>Adult:</td><td><strong>${totalAdults}</strong></td></tr>
+                          <tr><td>Child:</td><td><strong>${totalChildren}</strong></td></tr>
+                          <tr><td>Rooms:</td><td><strong>${rooms}</strong></td></tr>
+                          <tr><td>Veg Count:</td><td><strong>${foodCounts.veg}</strong></td></tr>
+                          <tr><td>Non Veg Count:</td><td><strong>${foodCounts.nonveg}</strong></td></tr>
+                          <tr><td>Jain Count:</td><td><strong>${foodCounts.jain}</strong></td></tr>
+                        </table>
+                      </div>
+                    </td>
+                    <td width="50%" style="padding-left: 8px;">
+                      <div class="card">
+                        <h3 class="title">Payment Breakup</h3>
+                        <table class="grid">
+                          <tr><td>Full Amount:</td><td><strong>${fullAmount}</strong></td></tr>
+                          <tr><td>Discount:</td><td><strong>${discount}</strong></td></tr>
+                          <tr><td>Coupon:</td><td><strong>${coupon || "-"}</strong></td></tr>
+                          <tr><td>Total Amount:</td><td><strong>${total}</strong></td></tr>
+                          <tr><td>Advance Amount:</td><td><strong>${advanceAmount}</strong></td></tr>
+                          <tr><td>Remaining Amount:</td><td><strong>${total - advanceAmount}</strong></td></tr>
+                        </table>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+                <div class="divider"></div>
+                <p><strong>Booking Cancellation Policy:</strong> From >${bookingDate},100% penalty will be charged. In case of no show : no refund.Booking cannot be cancelled/modified on or after the booking date and time mentioned in the Camping Confirmation Voucher. All time mentioned above is in destination time.</p>
+                <div class="divider"></div>
+                <p><strong>Note</strong></p>
+                <p>If your contact details have changed, please notify us so that the same can be updated in our records.</p>
+                <p style="margin-top: 8px;">If the booking is cancelled or changed by guest at a later stage, you will be notified and this confirmation email & Nirwana Stays Booking ID will be null and void.</p>
+              </td>
+            </tr>
+            <tr>
+              <td class="section">
+                <h3 class="title">${property.name} Contact Info</h3>
+                <div class="card">
+                  <p><strong>${property.name}</strong></p>
+                  <p>At- ${property.address || "Pawna Lake"}</p>
+                  <p>pawna lake</p>
+                  <p><a class="link" href="http://maps.google.com/maps?q=${property.latitude},${property.longitude}">Google Maps Link</a></p>
+                  <div class="divider"></div>
+                  <p><strong>Email - </strong><a class="link" href="mailto:campatpawna@gmail.com">campatpawna@gmail.com</a></p>
+                  <p><strong>Contact Number - </strong>Tushar Thakar - 9175106307</p>
+                </div>
+                <div class="divider"></div>
+                <p><strong>Note</strong> - Please do not reply to this email. It has been sent from an email account that is not monitored. To ensure that you receive communication related to your booking from Nirwana Stays , please add <a class="link" href="mailto:bookings@nirwanastays.com"><strong>bookings@nirwanastays.com</strong></a> to your contact list and address book.</p>
+                <div class="divider"></div>
+                <h3 class="title">Things to Carry</h3>
+                <p>• Always good to carry extra pair of clothes<br />
+                  • Winter and warm clothes as it will be cold night<br />
+                  • Toothbrush and paste (toiletries)<br />
+                  • Any other things you feel necessary<br />
+                  • Personal medicine if any</p>
+              </td>
+            </tr>
+            <tr>
+              <td class="footer">
+                Team ${property.name} | Thank you for choosing us.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+
+    const container = document.createElement("div");
+    container.innerHTML = html;
+    container.style.position = "absolute";
+    container.style.top = "-9999px";
+    container.style.left = "-9999px";
+    container.style.width = "794px";
+    container.style.background = "white";
+    container.style.padding = "0";
+    container.style.margin = "0";
+    document.body.appendChild(container);
+
+    try {
+      const canvas = await html2canvas(container, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL("image/png");
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const pdfWidth = 595.28;
+      const pdfHeight = (imgHeight * pdfWidth) / imgWidth;
+      const pdf = new jsPDF("p", "pt", [pdfWidth, pdfHeight]);
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Booking-${bookingId}.pdf`);
+    } catch (error) {
+      console.error("PDF generation failed:", error);
+      toast({
+        title: "PDF Failed",
+        description: "Unable to generate the booking PDF. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      document.body.removeChild(container);
+    }
+  };
+
   const images = property.images && property.images.length > 0 
     ? property.images 
     : ["https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&h=800&fit=crop"];
+
+  const supportPhone = "+919226869678";
+  const stayRangeText =
+    dateRange?.from && dateRange?.to
+      ? `${format(dateRange.from, "dd MMM yyyy")} to ${format(dateRange.to, "dd MMM yyyy")}`
+      : "my preferred dates";
+  const whatsappMessage = `Hi, I would like to enquire about ${property.name}. I am planning a stay from ${stayRangeText}. Please share availability and best offers.`;
+  const whatsappLink = `https://wa.me/919226869678?text=${encodeURIComponent(whatsappMessage)}`;
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] pb-20 font-sans">
@@ -580,241 +1007,246 @@ const BookingPage = () => {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.5 }}
-              className="bg-white rounded-3xl p-6 md:p-8 shadow-card border border-gray-100"
+              className="bg-white rounded-3xl shadow-card border border-gray-100 overflow-hidden"
             >
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-bold text-gray-900">Guest Details</h2>
-                <div className="h-1 flex-1 bg-gray-100 ml-6 rounded-full" />
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-gray-700 font-medium">Full Name</Label>
-                  <Input 
-                    id="name" 
-                    placeholder="John Doe" 
-                    className="rounded-xl border-gray-200 focus:ring-primary focus:border-primary h-12 bg-gray-50/50"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-gray-700 font-medium">Email Address</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    placeholder="john@example.com" 
-                    className="rounded-xl border-gray-200 focus:ring-primary focus:border-primary h-12 bg-gray-50/50"
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-gray-700 font-medium">Phone Number</Label>
-                  <Input 
-                    id="phone" 
-                    type="tel" 
-                    placeholder="+91 98765 43210" 
-                    className="rounded-xl border-gray-200 focus:ring-primary focus:border-primary h-12 bg-gray-50/50"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  />
-                </div>
-              </div>
-              
-              {/* Rooms & Guests Selection */}
-              <div className="mt-8 space-y-8">
-                {/* Room Selector - Minimalist */}
-                <div className="flex items-center justify-between py-2">
+              {/* Header */}
+              <div className="bg-gray-50/50 p-6 md:p-8 border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm">
+                    <User size={24} />
+                  </div>
                   <div>
-                    <Label className="text-gray-900 font-semibold text-lg">Rooms</Label>
-                    <p className="text-sm text-gray-500 font-light">Number of rooms required</p>
+                    <h2 className="text-2xl font-bold text-gray-900">Guest Details</h2>
+                    <p className="text-gray-500 text-sm">Who should we send the booking details to?</p>
                   </div>
-                  <div className="flex items-center gap-6">
-                    <button
-                      type="button"
-                      onClick={() => handleRoomsChange(rooms - 1)}
-                      disabled={rooms <= 1}
-                      className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:border-gray-900 hover:text-gray-900 transition-colors disabled:opacity-30 disabled:hover:border-gray-200 disabled:cursor-not-allowed"
-                    >
-                      <span className="text-xl pb-1">−</span>
-                    </button>
-                    <span className="text-xl font-medium text-gray-900 w-4 text-center">{rooms}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRoomsChange(rooms + 1)}
-                      disabled={rooms >= (property?.rooms || 5)}
-                      className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:border-gray-900 hover:text-gray-900 transition-colors disabled:opacity-30 disabled:hover:border-gray-200 disabled:cursor-not-allowed"
-                    >
-                      <span className="text-xl pb-1">+</span>
-                    </button>
+                </div>
+              </div>
+              
+              <div className="p-6 md:p-8 space-y-8">
+                {/* Personal Info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="text-gray-700 font-medium ml-1">Full Name</Label>
+                    <div className="relative group">
+                      <User className="absolute left-4 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
+                      <Input 
+                        id="name" 
+                        placeholder="John Doe" 
+                        className="pl-12 rounded-xl border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary h-12 bg-gray-50/30 transition-all"
+                        value={formData.name}
+                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-gray-700 font-medium ml-1">Email Address</Label>
+                    <div className="relative group">
+                      <Mail className="absolute left-4 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
+                      <Input 
+                        id="email" 
+                        type="email" 
+                        placeholder="john@example.com" 
+                        className="pl-12 rounded-xl border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary h-12 bg-gray-50/30 transition-all"
+                        value={formData.email}
+                        onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="phone" className="text-gray-700 font-medium ml-1">Phone Number</Label>
+                    <div className="relative group">
+                      <Phone className="absolute left-4 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
+                      <Input 
+                        id="phone" 
+                        type="tel" 
+                        placeholder="+91 98765 43210" 
+                        className="pl-12 rounded-xl border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary h-12 bg-gray-50/30 transition-all"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <Separator className="bg-gray-100" />
-
-                {/* Room Guest Controllers - Compact Vertical */}
-                {rooms > 0 && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-gray-900 font-semibold text-base">Guest Configuration</Label>
-                      <span className="text-xs font-medium px-2 py-0.5 bg-green-50 text-green-700 rounded">
-                        Max {property?.capacity || 4} / room
-                      </span>
+                <Separator />
+                
+                {/* Room Configuration */}
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">Room Configuration</h3>
+                      <p className="text-sm text-gray-500">Customize guests per room</p>
                     </div>
-                    
-                    <div className="space-y-3">
-                      {roomGuests.slice(0, rooms).map((room, idx) => (
-                        <div key={`room-${idx}`} className="bg-white rounded-xl border border-green-100 overflow-hidden shadow-sm hover:shadow transition-shadow">
-                          <div className="px-4 py-2 bg-green-50 border-b border-green-100 flex items-center justify-between">
-                            <span className="text-xs font-bold text-green-800 uppercase tracking-wide">Room {idx + 1}</span>
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                    <div className="flex items-center gap-4 bg-gray-50 p-1.5 rounded-xl border border-gray-200">
+                      <button
+                        type="button"
+                        onClick={() => handleRoomsChange(rooms - 1)}
+                        disabled={rooms <= 1}
+                        className="w-9 h-9 rounded-lg bg-white shadow-sm border border-gray-200 flex items-center justify-center text-gray-600 hover:text-primary hover:border-primary transition-all disabled:opacity-50 disabled:hover:border-gray-200 disabled:hover:text-gray-600"
+                      >
+                        <span className="text-lg font-medium leading-none mb-0.5">−</span>
+                      </button>
+                      <span className="text-base font-bold text-gray-900 w-16 text-center">{rooms} Room{rooms > 1 ? 's' : ''}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRoomsChange(rooms + 1)}
+                        disabled={rooms >= maxRoomsForSelection}
+                        className="w-9 h-9 rounded-lg bg-white shadow-sm border border-gray-200 flex items-center justify-center text-gray-600 hover:text-primary hover:border-primary transition-all disabled:opacity-50 disabled:hover:border-gray-200 disabled:hover:text-gray-600"
+                      >
+                        <span className="text-lg font-medium leading-none mb-0.5">+</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {roomGuests.slice(0, rooms).map((room, idx) => (
+                      <motion.div 
+                        key={`room-${idx}`}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.1 }}
+                        className="border border-gray-100 rounded-2xl p-4 hover:border-primary/30 hover:shadow-md transition-all bg-white"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                              {idx + 1}
+                            </div>
+                            <span className="font-semibold text-gray-700">Room {idx + 1}</span>
                           </div>
                           
-                          <div className="p-3 space-y-2.5">
-                            {/* Adults */}
-                            <div className="flex items-center justify-between bg-white border border-gray-200 p-2.5 rounded-lg hover:bg-gray-50 transition-colors">
-                              <div className="flex items-center gap-2.5">
-                                <div className="w-7 h-7 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center flex-shrink-0">
-                                  <Users size={12} />
-                                </div>
-                                <span className="text-gray-700 font-medium text-sm">Adults</span>
-                              </div>
-                              <div className="flex items-center gap-2.5">
+                          <div className="flex items-center gap-6">
+                            {/* Adults Control */}
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Adults</span>
+                              <div className="flex items-center gap-3 bg-gray-50 rounded-full p-1 border border-gray-100">
                                 <button
                                   type="button"
                                   onClick={() => handleRoomGuestChange(idx, 'adults', room.adults - 1)}
                                   disabled={room.adults <= 1}
-                                  className="w-7 h-7 rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                                  className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition-all disabled:opacity-40"
                                 >
-                                  <span className="pb-0.5 text-sm">−</span>
+                                  −
                                 </button>
-                                <span className="font-bold text-gray-900 w-3 text-center text-sm">{room.adults}</span>
+                                <span className="font-bold text-gray-900 w-4 text-center">{room.adults}</span>
                                 <button
                                   type="button"
                                   onClick={() => handleRoomGuestChange(idx, 'adults', room.adults + 1)}
                                   disabled={room.adults + room.children >= (property?.capacity || 4)}
-                                  className="w-7 h-7 rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                                  className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition-all disabled:opacity-40"
                                 >
-                                  <span className="pb-0.5 text-sm">+</span>
+                                  +
                                 </button>
                               </div>
                             </div>
 
-                            {/* Children */}
-                            <div className="flex items-center justify-between bg-white border border-gray-200 p-2.5 rounded-lg hover:bg-gray-50 transition-colors">
-                              <div className="flex items-center gap-2.5">
-                                <div className="w-7 h-7 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center flex-shrink-0">
-                                  <Users size={12} />
-                                </div>
-                                <span className="text-gray-700 font-medium text-sm">Children</span>
-                              </div>
-                              <div className="flex items-center gap-2.5">
+                            {/* Divider */}
+                            <div className="w-px h-10 bg-gray-100 hidden sm:block" />
+
+                            {/* Children Control */}
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Children</span>
+                              <div className="flex items-center gap-3 bg-gray-50 rounded-full p-1 border border-gray-100">
                                 <button
                                   type="button"
                                   onClick={() => handleRoomGuestChange(idx, 'children', room.children - 1)}
                                   disabled={room.children <= 0}
-                                  className="w-7 h-7 rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                                  className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition-all disabled:opacity-40"
                                 >
-                                  <span className="pb-0.5 text-sm">−</span>
+                                  −
                                 </button>
-                                <span className="font-bold text-gray-900 w-3 text-center text-sm">{room.children}</span>
+                                <span className="font-bold text-gray-900 w-4 text-center">{room.children}</span>
                                 <button
                                   type="button"
                                   onClick={() => handleRoomGuestChange(idx, 'children', room.children + 1)}
                                   disabled={room.adults + room.children >= (property?.capacity || 4)}
-                                  className="w-7 h-7 rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                                  className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition-all disabled:opacity-40"
                                 >
-                                  <span className="pb-0.5 text-sm">+</span>
+                                  +
                                 </button>
                               </div>
                             </div>
                           </div>
                         </div>
-                      ))}
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Food Preferences - Compact Green Theme */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">Meal Preferences</h3>
+                      <p className="text-sm text-gray-500">Select dietary requirements</p>
+                    </div>
+                    <div className="flex items-center gap-2 bg-green-50 px-3 py-1 rounded-full border border-green-100">
+                       <UtensilsCrossed className="w-4 h-4 text-primary" />
+                       <span className={`text-sm font-semibold ${
+                          (foodCounts.veg + foodCounts.nonveg + foodCounts.jain) === totalGuests 
+                            ? 'text-primary' 
+                            : 'text-orange-600'
+                        }`}>
+                          {foodCounts.veg + foodCounts.nonveg + foodCounts.jain} / {totalGuests}
+                        </span>
                     </div>
                   </div>
-                )}
 
-                <Separator className="bg-gray-100" />
-
-                {/* Food Preferences - Vertical List Style */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-gray-900 font-semibold text-lg">Food Preferences</Label>
-                    <div className={`text-xs px-2 py-1 rounded transition-colors ${
-                      (foodCounts.veg + foodCounts.nonveg + foodCounts.jain) === totalGuests 
-                        ? 'bg-green-50 text-green-700' 
-                        : 'bg-orange-50 text-orange-700'
-                    }`}>
-                      {foodCounts.veg + foodCounts.nonveg + foodCounts.jain} / {totalGuests} selected
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50/50 rounded-2xl p-5 border border-gray-100 space-y-4">
+                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-3">
                     {(['veg', 'nonveg', 'jain'] as const).map((type) => (
-                      <div key={type} className="flex items-center justify-between">
+                      <div key={type} className="flex items-center justify-between bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
                         <div className="flex items-center gap-3">
-                          <div className={`w-2.5 h-2.5 rounded-full ${
-                            type === 'veg' ? 'bg-green-500' : 
-                            type === 'nonveg' ? 'bg-red-500' : 
+                          <div className={`w-2 h-2 rounded-full ${
+                            type === 'veg' ? 'bg-green-600' : 
+                            type === 'nonveg' ? 'bg-red-600' : 
                             'bg-orange-500'
                           }`} />
-                          <span className="font-medium text-gray-700 capitalize w-20">
+                          <span className="font-semibold text-gray-700 capitalize">
                             {type === 'nonveg' ? 'Non-Veg' : type}
                           </span>
                         </div>
                         
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
                           <button
                             type="button"
                             onClick={() => handleFoodCount(type, -1)}
                             disabled={foodCounts[type] <= 0}
-                            className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:border-gray-400 hover:text-gray-900 transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+                            className="w-8 h-8 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center text-primary hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <span className="pb-1 text-lg">−</span>
+                            <span className="pb-0.5 text-lg">−</span>
                           </button>
-                          <span className="font-semibold text-gray-900 w-6 text-center">{foodCounts[type]}</span>
+                          <span className="font-bold text-gray-900 w-5 text-center">{foodCounts[type]}</span>
                           <button
                             type="button"
                             onClick={() => handleFoodCount(type, 1)}
                             disabled={(foodCounts.veg + foodCounts.nonveg + foodCounts.jain) >= totalGuests}
-                            className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:border-gray-400 hover:text-gray-900 transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+                            className="w-8 h-8 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center text-primary hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <span className="pb-1 text-lg">+</span>
+                            <span className="pb-0.5 text-lg">+</span>
                           </button>
                         </div>
                       </div>
                     ))}
-                    
-                    <div className="pt-4 border-t border-gray-200">
-                      <p className="text-xs text-gray-500 flex items-center gap-2">
-                        {(foodCounts.veg + foodCounts.nonveg + foodCounts.jain) !== totalGuests ? (
-                          <>
-                            <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
-                            Please select preferences for all {totalGuests} guests
-                          </>
-                        ) : (
-                          <>
-                            <Check className="w-3 h-3 text-green-600" />
-                            All guests covered
-                          </>
-                        )}
+                  </div>
+                   <div className="mt-2 text-right">
+                      <p className="text-xs text-gray-400">
+                        Total guests: {totalGuests}
                       </p>
                     </div>
-                  </div>
                 </div>
-              </div>
-              
-              <div className="mt-6 space-y-2">
-                <Label htmlFor="requests" className="text-gray-700 font-medium">Special Requests</Label>
-                <textarea 
-                  id="requests" 
-                  className="w-full min-h-[100px] rounded-xl border border-gray-200 bg-gray-50/50 p-4 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
-                  placeholder="Any dietary requirements or special occasions?"
-                  value={formData.specialRequests}
-                  onChange={(e) => setFormData({...formData, specialRequests: e.target.value})}
-                />
+                
+                <div className="space-y-2 pt-2">
+                  <Label htmlFor="requests" className="text-gray-700 font-medium ml-1">Special Requests</Label>
+                  <textarea 
+                    id="requests" 
+                    className="w-full min-h-[100px] rounded-xl border border-gray-200 bg-white p-4 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none shadow-sm placeholder:text-gray-400"
+                    placeholder="Any dietary requirements, allergies, or special occasions?"
+                    value={formData.specialRequests}
+                    onChange={(e) => setFormData({...formData, specialRequests: e.target.value})}
+                  />
+                </div>
               </div>
             </motion.div>
 
@@ -840,6 +1272,11 @@ const BookingPage = () => {
                   }}
                 />
               </div>
+              {dateRange?.from && dateRange?.to && minAvailableRooms !== null && (
+                <p className="mt-4 text-center text-sm text-gray-500">
+                  Minimum {minAvailableRooms} room(s) available for selected dates.
+                </p>
+              )}
             </motion.div>
           </div>
 
@@ -883,14 +1320,108 @@ const BookingPage = () => {
                     </div>
                   )}
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">Service Fee (10%)</span>
+                    <span className="text-gray-600">Service Fee (5%)</span>
                     <span className="font-medium text-gray-900">₹{serviceFee}</span>
+                  </div>
+                  
+                  {/* Coupon Section */}
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    {allAvailableCoupons.length > 0 && (
+                      <div className="mb-3">
+                        <label className="block text-xs font-medium text-gray-500 mb-2">
+                          Available Offers
+                        </label>
+                        <div className="flex overflow-x-auto space-x-2 pb-2 scrollbar-hide">
+                          {(() => {
+                            const accommodationCoupons = allAvailableCoupons.filter(
+                              (c: Coupon) => c.accommodationType?.trim() === property?.name?.trim()
+                            );
+                            const allTypeCoupons = allAvailableCoupons.filter(
+                              (c: Coupon) => c.accommodationType?.trim().toLowerCase() === "all"
+                            );
+                            const couponsToShow = [...accommodationCoupons, ...allTypeCoupons.filter(ac => !accommodationCoupons.find(sc => sc.id === ac.id))].slice(0, 4);
+
+                            return couponsToShow.map((couponItem: Coupon) => (
+                              <button
+                                key={couponItem.code}
+                                onClick={() => handleCouponSelect(couponItem)}
+                                className="flex-shrink-0 px-3 py-1.5 bg-green-50 text-primary rounded-full text-xs font-medium hover:bg-green-100 transition-colors whitespace-nowrap border border-green-100"
+                              >
+                                {couponItem.code}
+                              </button>
+                            ));
+                          })()}
+                        </div>
+                      </div>
+                    )}
+
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Coupon Code</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={coupon}
+                        onChange={(e) => {
+                          setCoupon(e.target.value);
+                          setCouponApplied(false);
+                          setDiscount(0);
+                          setAppliedCoupon(null);
+                          setCouponError('');
+                        }}
+                        className="flex-1 px-3 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                        placeholder="Enter coupon code"
+                        disabled={couponApplied}
+                      />
+                      <Button
+                        type="button"
+                        onClick={handleApplyCoupon}
+                        disabled={couponApplied || !coupon.trim()}
+                        className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {couponApplied ? 'Applied' : 'Apply'}
+                      </Button>
+                    </div>
+                    {couponError && (
+                      <p className="text-xs text-red-600 mt-1.5">{couponError}</p>
+                    )}
+                    {couponApplied && appliedCoupon && (
+                      <div className="mt-2 p-2 bg-green-50 rounded-lg border border-green-100">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-primary">
+                            {appliedCoupon.code} Applied
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCoupon('');
+                              setCouponApplied(false);
+                              setDiscount(0);
+                              setAppliedCoupon(null);
+                              setCouponError('');
+                            }}
+                            className="text-xs text-red-600 hover:text-red-700 font-medium"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {appliedCoupon.discountType === 'fixed' 
+                            ? `₹${appliedCoupon.discount} off`
+                            : `${appliedCoupon.discount}% off`}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div className="border-t border-dashed border-gray-200 my-4" />
 
                 <div className="space-y-4 mb-8">
+                  {discount > 0 && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">Discount</span>
+                      <span className="font-medium text-green-600">-₹{discount}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-bold text-gray-900">Total Amount</span>
                     <span className="text-2xl font-bold text-primary">₹{total}</span>
@@ -918,6 +1449,14 @@ const BookingPage = () => {
                     "Proceed to Pay"
                   )}
                 </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleDownloadPdf}
+                  className="w-full h-12 rounded-2xl border border-primary/20 text-primary hover:bg-primary/10 mt-3"
+                >
+                  Download Booking PDF
+                </Button>
                 
                 <p className="text-xs text-center text-gray-400 mt-4 flex items-center justify-center gap-1">
                   <Check size={12} /> Secure Payment Gateway
@@ -942,6 +1481,36 @@ const BookingPage = () => {
             </motion.div>
           </div>
         </div>
+
+        {/* Contact Support */}
+        <section className="mt-16">
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-card p-6 md:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Need help with this stay?</h3>
+              <p className="text-gray-600">
+                Talk to our team for availability, custom offers, or special requests.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <a
+                href={`tel:${supportPhone}`}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary/10 px-6 py-3 text-sm font-semibold text-primary hover:bg-primary/15 transition-colors"
+              >
+                <Phone className="h-4 w-4" />
+                Call {supportPhone}
+              </a>
+              <a
+                href={whatsappLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#20c45e] transition-colors"
+              >
+                <MessageCircle className="h-4 w-4" />
+                WhatsApp Enquiry
+              </a>
+            </div>
+          </div>
+        </section>
 
         {/* Recommended Stays */}
         {recommended.length > 0 && (

@@ -4,6 +4,7 @@ import { X, Loader2 } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { api, GalleryImage } from "@/services/api";
+import { updatePageMeta } from "@/utils/seo";
 
 const Gallery = () => {
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
@@ -11,6 +12,18 @@ const Gallery = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null);
+
+  useEffect(() => {
+    const canonical = `${window.location.origin}/gallery`;
+    updatePageMeta({
+      title: "Gallery | Havenly Stays Experiences",
+      description:
+        "Explore our gallery of lakeside villas, cottages, and unforgettable moments at Pawna Lake.",
+      canonical,
+      ogImage:
+        "https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=1200&h=630&fit=crop",
+    });
+  }, []);
 
   useEffect(() => {
     const fetchImages = async () => {

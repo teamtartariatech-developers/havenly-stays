@@ -1,52 +1,56 @@
 import { motion } from "framer-motion";
-import { Leaf, Heart, Star, Users, Award, Globe } from "lucide-react";
+import { useEffect } from "react";
+import { Leaf, Heart, Star, Users, Award, Globe, MapPin, Phone, TreePine } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import { Button } from "@/components/ui/button";
+import { updatePageMeta } from "@/utils/seo";
 
 const values = [
   {
-    icon: Leaf,
-    title: "Sustainability",
-    description: "We're committed to eco-friendly practices that protect the natural beauty we share with our guests.",
-  },
-  {
     icon: Heart,
-    title: "Genuine Care",
-    description: "Every guest is family. We go beyond expectations to create meaningful, memorable experiences.",
+    title: "Passion for Nature",
+    description: "We are dedicated to providing authentic outdoor experiences while preserving the natural beauty of our surroundings.",
   },
   {
-    icon: Star,
-    title: "Excellence",
-    description: "From our accommodations to our service, we pursue perfection in every detail.",
+    icon: Award,
+    title: "Safety First",
+    description: "Your safety is our priority. All our activities and accommodations meet the highest safety standards.",
+  },
+  {
+    icon: Users,
+    title: "Community Focus",
+    description: "We create spaces for meaningful connections between travelers and support our local community.",
+  },
+  {
+    icon: Leaf,
+    title: "Eco-Friendly",
+    description: "Our commitment to sustainability guides every decision we make, from waste management to energy use.",
   },
 ];
 
 const stats = [
-  { value: "15+", label: "Years of Excellence" },
-  { value: "50+", label: "Unique Properties" },
-  { value: "12,000+", label: "Happy Guests" },
-  { value: "4.9", label: "Average Rating" },
+  { value: "5+", label: "Years Experience" },
+  { value: "50+", label: "Properties" },
+  { value: "500+", label: "Happy Guests" },
+  { value: "4.9", label: "Rating" },
 ];
 
-const team = [
-  {
-    name: "Alexandra Rivers",
-    role: "Founder & CEO",
-    image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop",
-  },
-  {
-    name: "Marcus Chen",
-    role: "Head of Operations",
-    image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop",
-  },
-  {
-    name: "Sarah Mitchell",
-    role: "Guest Experience Director",
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
-  },
-];
+// Removed team section as per website reference
 
 const About = () => {
+  useEffect(() => {
+    const canonical = `${window.location.origin}/about`;
+    updatePageMeta({
+      title: "About Havenly Stays | Curated Lakeside Retreats",
+      description:
+        "Learn about Havenly Stays, our passion for nature, and our commitment to safe, sustainable stays around Pawna Lake.",
+      canonical,
+      ogImage:
+        "https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=1200&h=630&fit=crop",
+    });
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -68,13 +72,13 @@ const About = () => {
           >
             <span className="text-white/70 font-medium text-sm uppercase tracking-wider">Our Story</span>
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-white mt-4 mb-6">
-              Creating Escapes
-              <span className="block text-white/80">Since 2010</span>
+              Crafting Memories
+              <span className="block text-white/80">Since 2019</span>
             </h1>
             <p className="text-white/70 text-lg md:text-xl leading-relaxed">
-              Born from a passion for nature and hospitality, Evergreen Resorts has grown 
-              from a single mountain retreat to a collection of extraordinary properties 
-              across the world's most breathtaking destinations.
+              Welcome to Gecestays, your premier destination for luxury villa rentals and lakeside retreats. 
+              What started as a passion for nature has evolved into a curated collection of stays that blend 
+              modern elegance with the raw beauty of the Pawna Lake region.
             </p>
           </motion.div>
         </div>
@@ -120,17 +124,17 @@ const About = () => {
             >
               <span className="text-accent font-medium text-sm uppercase tracking-wider">Our Mission</span>
               <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mt-2 mb-6">
-                Connecting People with Nature's Wonders
+                Providing Thoughtfully Designed Accommodations
               </h2>
               <p className="text-muted-foreground text-lg leading-relaxed mb-6">
-                We believe that the most profound moments happen when we disconnect from 
-                the everyday and reconnect with the natural world. Our mission is to provide 
-                sanctuaries where guests can find peace, adventure, and renewal.
+                Our mission is to provide thoughtfully designed accommodations that complement the natural beauty 
+                of our surroundings. We are committed to sustainable tourism, supporting our local community, 
+                and delivering exceptional value through our all-inclusive packages.
               </p>
               <p className="text-muted-foreground text-lg leading-relaxed">
-                Each of our properties is thoughtfully designed to harmonize with its 
-                surroundings, offering authentic experiences that respect and celebrate 
-                the local environment and culture.
+                We believe that every stay should be an experience. Our dedicated team works tirelessly to 
+                ensure that from the moment you arrive until your departure, every detail is handled with 
+                precision and care.
               </p>
             </motion.div>
           </div>
@@ -152,7 +156,7 @@ const About = () => {
             </h2>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {values.map((value, index) => (
               <motion.div
                 key={value.title}
@@ -200,8 +204,8 @@ const About = () => {
         </div>
       </section>
 
-      {/* Team */}
-      <section className="py-16 md:py-24">
+      {/* Why Choose Us */}
+      <section className="py-16 md:py-24 bg-section-gradient">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -209,70 +213,89 @@ const About = () => {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <span className="text-accent font-medium text-sm uppercase tracking-wider">Our Team</span>
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mt-2 mb-4">
-              Meet the Visionaries
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
+              Why Choose Gecestays?
             </h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Passionate individuals dedicated to crafting unforgettable experiences.
-            </p>
           </motion.div>
-
-          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            {team.map((member, index) => (
-              <motion.div
-                key={member.name}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="text-center"
-              >
-                <div className="relative mb-6 inline-block">
-                  <img
-                    src={member.image}
-                    alt={member.name}
-                    className="w-40 h-40 rounded-full object-cover mx-auto shadow-card"
-                  />
-                  <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
-                </div>
-                <h3 className="font-display text-xl font-semibold text-foreground mb-1">
-                  {member.name}
-                </h3>
-                <p className="text-muted-foreground">{member.role}</p>
-              </motion.div>
-            ))}
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                <MapPin size={24} />
+              </div>
+              <div>
+                <h4 className="font-display text-xl font-semibold text-foreground mb-2">Prime Lakeside Location</h4>
+                <p className="text-muted-foreground leading-relaxed">Enjoy the breathtaking beauty and tranquility of Pawna Lake right at your doorstep.</p>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                <Heart size={24} />
+              </div>
+              <div>
+                <h4 className="font-display text-xl font-semibold text-foreground mb-2">Luxury Accommodations</h4>
+                <p className="text-muted-foreground leading-relaxed">Our villas and cottages offer a sophisticated and intimate atmosphere, perfect for relaxation.</p>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                <Users size={24} />
+              </div>
+              <div>
+                <h4 className="font-display text-xl font-semibold text-foreground mb-2">All-Inclusive Experience</h4>
+                <p className="text-muted-foreground leading-relaxed">We provide everything you need for a stress-free stay, including premium meals and activities.</p>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                <TreePine size={24} />
+              </div>
+              <div>
+                <h4 className="font-display text-xl font-semibold text-foreground mb-2">Curated Activities</h4>
+                <p className="text-muted-foreground leading-relaxed">From water sports to mountain treks, we offer activities tailored for every kind of guest.</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Global Presence */}
-      <section className="py-16 md:py-24 bg-section-gradient">
+      {/* Call to Action */}
+      <section className="py-16 md:py-24 bg-hero-gradient">
         <div className="container mx-auto px-4 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
-              <Globe className="w-10 h-10 text-primary" />
-            </div>
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-              A Global Network of Escapes
+            <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-6">
+              Ready to Start Your Journey?
             </h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto mb-8">
-              From mountain peaks to ocean shores, our properties span five continents, 
-              each offering a unique window into the world's most inspiring landscapes.
+            <p className="text-white/80 text-lg md:text-xl mb-8 max-w-2xl mx-auto leading-relaxed">
+              Whether you're looking for a weekend escape, a romantic retreat, or a family vacation, 
+              Gecestays is your perfect destination.
             </p>
-            <div className="flex items-center justify-center gap-4 flex-wrap">
-              <div className="flex items-center gap-2 bg-card px-4 py-2 rounded-full shadow-soft">
-                <Users className="w-5 h-5 text-primary" />
-                <span className="text-foreground font-medium">15+ Countries</span>
-              </div>
-              <div className="flex items-center gap-2 bg-card px-4 py-2 rounded-full shadow-soft">
-                <Star className="w-5 h-5 text-primary" />
-                <span className="text-foreground font-medium">50+ Properties</span>
-              </div>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Button 
+                size="lg"
+                className="bg-white text-primary hover:bg-white/90 px-8 py-4"
+                onClick={() => window.location.href = '/#properties'}
+              >
+                Book Your Stay
+              </Button>
+              <Button 
+                variant="outline"
+                size="lg"
+                as="a"
+                href="tel:+919226869678"
+                className="text-white border-white hover:bg-white/10 px-8 py-4"
+              >
+                <Phone className="mr-2 w-5 h-5" />
+                Call Us Now
+              </Button>
             </div>
           </motion.div>
         </div>

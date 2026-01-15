@@ -1,12 +1,100 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Star, MapPin, Users, Wifi, Car, Heart, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { api, Accommodation } from "@/services/api";
 
+interface Coupon {
+  id: number;
+  code: string;
+  discountType: "fixed" | "percentage";
+  discount: string;
+  minAmount?: string;
+  maxDiscount?: string | null;
+  expiryDate: string;
+  active: number;
+  accommodationType?: string;
+}
+
+const FALLBACK_IMAGE =
+  "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&h=400&fit=crop";
+
+const isCouponApplicable = (coupon: Coupon, propertyName: string) => {
+  const couponAccommodation = coupon.accommodationType?.trim().toLowerCase() || "";
+  if (!couponAccommodation || couponAccommodation === "all") return true;
+  return couponAccommodation === propertyName.trim().toLowerCase();
+};
+
+const getBestCouponPercent = (property: Accommodation, coupons: Coupon[]) => {
+  const price = property.adult_price || property.price || 0;
+  const now = new Date();
+
+  const applicable = coupons.filter((coupon) => {
+    if (coupon.active !== 1) return false;
+    const expiry = new Date(coupon.expiryDate);
+    if (Number.isNaN(expiry.getTime()) || expiry <= now) return false;
+    return isCouponApplicable(coupon, property.name);
+  });
+
+  const bestPercent = applicable.reduce((max, coupon) => {
+    const discountValue = parseFloat(coupon.discount);
+    if (!discountValue || discountValue <= 0) return max;
+
+    const percent =
+      coupon.discountType === "percentage"
+        ? discountValue
+        : price > 0
+          ? (discountValue / price) * 100
+          : 0;
+
+    return Math.max(max, percent);
+  }, 0);
+
+  return Math.max(0, Math.round(bestPercent));
+};
+
+const PropertyImageCarousel = ({
+  images,
+  name,
+}: {
+  images?: string[];
+  name: string;
+}) => {
+  const imageList = Array.isArray(images) && images.length > 0 ? images : [FALLBACK_IMAGE];
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    if (imageList.length <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % imageList.length);
+    }, 3500);
+    return () => clearInterval(timer);
+  }, [imageList.length]);
+
+  return (
+    <div className="relative h-56 md:h-64 overflow-hidden">
+      <AnimatePresence mode="wait">
+        <motion.img
+          key={currentIndex}
+          src={imageList[currentIndex]}
+          alt={`${name} image ${currentIndex + 1}`}
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+          initial={{ opacity: 0.6, scale: 1.05 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.6 }}
+          draggable={false}
+        />
+      </AnimatePresence>
+      <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+    </div>
+  );
+};
+
 const PropertiesSection = () => {
   const navigate = useNavigate();
   const [properties, setProperties] = useState<Accommodation[]>([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,6 +114,19 @@ const PropertiesSection = () => {
     };
 
     fetchProperties();
+  }, []);
+
+  useEffect(() => {
+    const fetchCoupons = async () => {
+      try {
+        const data = await api.getCoupons();
+        setCoupons(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Error fetching coupons:", err);
+      }
+    };
+
+    fetchCoupons();
   }, []);
 
   if (loading) {
@@ -67,10 +168,7 @@ const PropertiesSection = () => {
         {/* Properties Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {properties.map((property, index) => {
-            const mainImage = Array.isArray(property.images) && property.images.length > 0 
-              ? property.images[0] 
-              : "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&h=400&fit=crop";
-            
+            const bestCouponPercent = getBestCouponPercent(property, coupons);
             return (
             <motion.div
               key={property.id}
@@ -82,17 +180,19 @@ const PropertiesSection = () => {
             >
               <div className="bg-card rounded-3xl overflow-hidden shadow-card hover:shadow-elevated transition-all duration-500">
                 {/* Image */}
-                <div className="relative h-56 md:h-64 overflow-hidden">
-                  <img
-                    src={mainImage}
-                    alt={property.name}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  
-                  {/* Type Badge */}
-                  <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full">
-                    <span className="text-xs font-medium text-foreground">{property.type}</span>
+                <div className="relative">
+                  <PropertyImageCarousel images={property.images} name={property.name} />
+
+                  {/* Badges */}
+                  <div className="absolute top-4 left-4 flex flex-col gap-2">
+                    {bestCouponPercent > 0 && (
+                      <div className="bg-emerald-500 text-white px-3 py-1 rounded-full shadow-sm text-xs font-semibold">
+                        Save up to {bestCouponPercent}%
+                      </div>
+                    )}
+                    <div className="bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full">
+                      <span className="text-xs font-medium text-foreground">{property.type}</span>
+                    </div>
                   </div>
 
                   {/* Favorite Button */}

@@ -1,148 +1,211 @@
-import { motion } from "framer-motion";
-import { Calendar, MapPin, Users, ArrowRight } from "lucide-react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, Calendar, MapPin, Music, PartyPopper, Sparkles } from "lucide-react";
 
-const events = [
+const pastEvents = [
   {
     id: 1,
-    title: "Sunset Yoga Retreat",
-    date: "Feb 15-17, 2026",
-    location: "Coastal Paradise",
-    attendees: 24,
-    image: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600&h=400&fit=crop",
-    category: "Wellness",
+    title: "New Year's Eve Bash",
+    date: "Dec 31, 2025",
+    location: "Riverside Resort",
+    image: "https://images.unsplash.com/photo-1467810563316-b5476525c0f9?w=800&h=600&fit=crop",
+    category: "Celebration",
   },
   {
     id: 2,
-    title: "Mountain Photography Workshop",
-    date: "Mar 5-8, 2026",
-    location: "Mountain Haven",
-    attendees: 16,
-    image: "https://images.unsplash.com/photo-1452421822248-d4c2b47f0c81?w=600&h=400&fit=crop",
-    category: "Adventure",
+    title: "Sunset Musical Night",
+    date: "Jan 15, 2026",
+    location: "Mountain View Deck",
+    image: "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=800&h=600&fit=crop",
+    category: "Music",
   },
   {
     id: 3,
-    title: "Wine & Dine Weekend",
-    date: "Apr 12-14, 2026",
-    location: "Lake Serenity",
-    attendees: 40,
-    image: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop",
-    category: "Culinary",
+    title: "Neon Pool Party",
+    date: "Jan 20, 2026",
+    location: "Infinity Pool",
+    image: "https://images.unsplash.com/photo-1576442672323-c90a2a5009a0?w=800&h=600&fit=crop",
+    category: "Party",
+  },
+   {
+    id: 4,
+    title: "Corporate Gala",
+    date: "Jan 28, 2026",
+    location: "Grand Ballroom",
+    image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&h=600&fit=crop",
+    category: "Gala",
+  },
+  {
+    id: 5,
+    title: "EDM Night",
+    date: "Feb 5, 2026",
+    location: "Open Air Arena",
+    image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&h=600&fit=crop",
+    category: "Music",
+  },
+    {
+    id: 6,
+    title: "Valentine's Glow",
+    date: "Feb 14, 2026",
+    location: "Lakeside Deck",
+    image: "https://images.unsplash.com/photo-1519225468359-2996bc140aaa?w=800&h=600&fit=crop",
+    category: "Dining",
   },
 ];
 
 const EventsSection = () => {
+  const [selectedEvent, setSelectedEvent] = useState<typeof pastEvents[0] | null>(null);
+
   return (
-    <section className="py-16 md:py-24 relative overflow-hidden">
-      {/* Background Decoration */}
-      <div className="absolute inset-0 bg-hero-gradient opacity-5" />
+    <section className="py-16 md:py-24 relative overflow-hidden bg-[#050505]">
+      {/* Dynamic CSS for Marquee */}
+      <style>{`
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-marquee {
+          animation: marquee 40s linear infinite;
+        }
+        .animate-marquee:hover {
+          animation-play-state: paused;
+        }
+      `}</style>
+
+      {/* Subtle Neon Glows */}
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-600/10 rounded-full blur-[120px] pointer-events-none" />
       
-      <div className="container mx-auto px-4 relative z-10">
+      <div className="container mx-auto px-4 relative z-10 mb-12 text-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-12"
         >
-          <span className="text-accent font-medium text-sm uppercase tracking-wider">Experiences</span>
-          <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mt-2 mb-4">
-            Upcoming Events
+          <span className="inline-flex items-center gap-2 text-cyan-400 font-medium text-sm uppercase tracking-wider bg-cyan-950/30 px-4 py-1.5 rounded-full border border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.15)] backdrop-blur-md">
+            <Sparkles className="w-4 h-4" />
+            Vibes & Memories
+          </span>
+          <h2 className="font-display text-3xl md:text-5xl font-bold mt-6 mb-4 text-white drop-shadow-[0_0_25px_rgba(255,255,255,0.1)]">
+            Recent Happenings
           </h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Join us for exclusive experiences that create lasting memories.
+          <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+            Relive the electric atmosphere and unforgettable moments from our recent events.
           </p>
         </motion.div>
+      </div>
 
-        {/* Events Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-          {/* Featured Event */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="lg:col-span-2 group"
-          >
-            <div className="relative h-[400px] md:h-[500px] rounded-3xl overflow-hidden shadow-elevated">
+      {/* Infinite Marquee */}
+      <div className="relative w-full overflow-hidden py-4">
+        {/* Gradient Fade Edges */}
+        <div className="absolute inset-y-0 left-0 w-12 md:w-32 bg-gradient-to-r from-[#050505] to-transparent z-20 pointer-events-none" />
+        <div className="absolute inset-y-0 right-0 w-12 md:w-32 bg-gradient-to-l from-[#050505] to-transparent z-20 pointer-events-none" />
+
+        <div className="flex w-max animate-marquee gap-6 md:gap-8 px-4">
+          {[...pastEvents, ...pastEvents].map((event, index) => (
+            <div
+              key={`${event.id}-${index}`}
+              className="relative w-[300px] md:w-[400px] h-[400px] md:h-[500px] flex-shrink-0 group rounded-3xl overflow-hidden cursor-pointer border border-white/5 hover:border-purple-500/50 transition-all duration-500 shadow-lg hover:shadow-[0_0_30px_rgba(168,85,247,0.2)]"
+              onClick={() => setSelectedEvent(event)}
+            >
               <img
-                src={events[0].image}
-                alt={events[0].title}
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                src={event.image}
+                alt={event.title}
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 grayscale-[20%] group-hover:grayscale-0"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
               
-              <div className="absolute inset-0 p-6 md:p-10 flex flex-col justify-end">
-                <span className="inline-block bg-accent text-accent-foreground px-4 py-1.5 rounded-full text-sm font-medium mb-4 w-fit">
-                  {events[0].category}
-                </span>
-                <h3 className="font-display text-3xl md:text-4xl font-bold text-white mb-4">
-                  {events[0].title}
-                </h3>
-                
-                <div className="flex flex-wrap items-center gap-6 mb-6">
-                  <div className="flex items-center gap-2 text-white/80">
-                    <Calendar className="w-5 h-5" />
-                    <span>{events[0].date}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-white/80">
-                    <MapPin className="w-5 h-5" />
-                    <span>{events[0].location}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-white/80">
-                    <Users className="w-5 h-5" />
-                    <span>{events[0].attendees} spots left</span>
-                  </div>
-                </div>
+              {/* Dark Overlay Gradient */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-black/40 to-transparent opacity-90 transition-opacity duration-300" />
+              
+              {/* Neon Line Decoration */}
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 via-cyan-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="inline-flex items-center gap-2 bg-white text-forest-700 px-6 py-3 rounded-full font-medium w-fit hover:bg-white/90 transition-colors"
-                >
-                  Reserve Your Spot
-                  <ArrowRight className="w-5 h-5" />
-                </motion.button>
+              <div className="absolute inset-0 p-6 flex flex-col justify-end transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+                <span className="text-xs font-bold text-cyan-300 uppercase tracking-widest mb-2 opacity-0 group-hover:opacity-100 transition-opacity delay-100">
+                  {event.category}
+                </span>
+                <h3 className="font-display text-2xl font-bold text-white mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:via-purple-200 group-hover:to-cyan-200 transition-all">
+                  {event.title}
+                </h3>
               </div>
             </div>
-          </motion.div>
-
-          {/* Side Events */}
-          <div className="flex flex-col gap-6">
-            {events.slice(1).map((event, index) => (
-              <motion.div
-                key={event.id}
-                initial={{ opacity: 0, x: 30 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="group"
-              >
-                <div className="relative h-[200px] md:h-[237px] rounded-3xl overflow-hidden shadow-card hover:shadow-elevated transition-all">
-                  <img
-                    src={event.image}
-                    alt={event.title}
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-                  
-                  <div className="absolute inset-0 p-5 flex flex-col justify-end">
-                    <span className="inline-block bg-white/20 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-medium mb-2 w-fit">
-                      {event.category}
-                    </span>
-                    <h3 className="font-display text-xl font-bold text-white mb-2">
-                      {event.title}
-                    </h3>
-                    <div className="flex items-center gap-4 text-white/70 text-sm">
-                      <span>{event.date}</span>
-                      <span>•</span>
-                      <span>{event.location}</span>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+          ))}
         </div>
       </div>
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {selectedEvent && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-[#050505]/95 flex items-center justify-center p-4 backdrop-blur-md"
+            onClick={() => setSelectedEvent(null)}
+          >
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="absolute top-6 right-6 w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors text-white z-50 border border-white/10"
+              onClick={() => setSelectedEvent(null)}
+            >
+              <X className="w-6 h-6" />
+            </motion.button>
+            
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="relative max-w-5xl w-full max-h-[90vh] flex flex-col md:flex-row bg-[#0a0a0a] rounded-3xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(168,85,247,0.15)]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="md:w-2/3 h-[40vh] md:h-auto relative overflow-hidden group">
+                 <img
+                  src={selectedEvent.image}
+                  alt={selectedEvent.title}
+                  className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] to-transparent opacity-60 md:opacity-0" />
+              </div>
+              <div className="md:w-1/3 p-6 md:p-10 flex flex-col justify-center bg-[#0a0a0a] relative overflow-hidden">
+                {/* Decorative background glow */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/5 rounded-full blur-[60px] pointer-events-none" />
+                
+                <span className="relative z-10 text-cyan-400 font-bold text-sm tracking-widest uppercase mb-3 flex items-center gap-2">
+                  <PartyPopper className="w-4 h-4" />
+                  {selectedEvent.category}
+                </span>
+                <h3 className="relative z-10 font-display text-2xl md:text-4xl font-bold text-white mb-6">
+                  {selectedEvent.title}
+                </h3>
+                <div className="relative z-10 space-y-4 mb-8">
+                  <div className="flex items-center gap-3 text-gray-300">
+                    <Calendar className="w-5 h-5 text-purple-500" />
+                    <span>{selectedEvent.date}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-gray-300">
+                    <MapPin className="w-5 h-5 text-cyan-500" />
+                    <span>{selectedEvent.location}</span>
+                  </div>
+                </div>
+                <p className="relative z-10 text-gray-400 leading-relaxed">
+                  Experience the magic of our {selectedEvent.category.toLowerCase()} event. From the vibrant atmosphere to the curated details at {selectedEvent.location}, every moment was crafted for pure joy and celebration.
+                </p>
+                
+                <div className="relative z-10 mt-8 pt-8 border-t border-white/10 flex items-center gap-4">
+                    <div className="h-10 w-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400">
+                        <Music className="w-5 h-5" />
+                    </div>
+                    <div className="text-sm">
+                        <p className="text-white font-medium">Live Entertainment</p>
+                        <p className="text-gray-500">Featured at this event</p>
+                    </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 };
