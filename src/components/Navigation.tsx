@@ -34,24 +34,22 @@ const Navigation = () => {
   };
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-      isScrolled 
-        ? 'glass-effect bg-section-gradient/95 backdrop-blur-md shadow-sm' 
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
+        ? 'glass-effect bg-section-gradient/95 backdrop-blur-md shadow-sm'
         : 'bg-transparent'
-    }`}>
+      }`}>
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
             <img
               src="/logo.png"
-              alt="Pavana Agro Tourism"
+              alt="Arnastays"
               className="w-10 h-10 object-contain"
             />
-            <span className={`font-display text-xl font-semibold transition-colors ${
-              isScrolled ? 'text-foreground' : 'text-white'
-            }`}>
-              Pavana Agro Tourism
+            <span className={`font-display text-xl font-semibold transition-colors ${isScrolled ? 'text-foreground' : 'text-white'
+              }`}>
+              Arnastays
             </span>
           </Link>
 
@@ -62,13 +60,12 @@ const Navigation = () => {
                 key={item.name}
                 to={item.path}
                 onClick={() => handleNavClick(item.path)}
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  location.pathname === item.path 
-                    ? "text-primary" 
-                    : isScrolled 
-                      ? "text-muted-foreground" 
+                className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === item.path
+                    ? "text-primary"
+                    : isScrolled
+                      ? "text-muted-foreground"
                       : "text-white/90"
-                }`}
+                  }`}
               >
                 {item.name}
               </Link>
@@ -85,9 +82,8 @@ const Navigation = () => {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className={`md:hidden p-2 rounded-lg transition-colors ${
-              isScrolled ? 'hover:bg-secondary' : 'hover:bg-white/10 text-white'
-            }`}
+            className={`md:hidden p-2 rounded-lg transition-colors ${isScrolled ? 'hover:bg-secondary' : 'hover:bg-white/10 text-white'
+              }`}
           >
             {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -101,11 +97,10 @@ const Navigation = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className={`md:hidden border-t transition-colors ${
-              isScrolled 
-                ? 'glass-effect border-border' 
+            className={`md:hidden border-t transition-colors ${isScrolled
+                ? 'glass-effect border-border'
                 : 'bg-white/10 backdrop-blur-md border-white/20'
-            }`}
+              }`}
           >
             <div className="container mx-auto px-4 py-6 space-y-4">
               {navItems.map((item, index) => (
@@ -118,9 +113,8 @@ const Navigation = () => {
                   <Link
                     to={item.path}
                     onClick={() => handleNavClick(item.path)}
-                    className={`block py-2 text-lg font-medium hover:text-primary transition-colors ${
-                      isScrolled ? 'text-foreground' : 'text-white'
-                    }`}
+                    className={`block py-2 text-lg font-medium hover:text-primary transition-colors ${isScrolled ? 'text-foreground' : 'text-white'
+                      }`}
                   >
                     {item.name}
                   </Link>

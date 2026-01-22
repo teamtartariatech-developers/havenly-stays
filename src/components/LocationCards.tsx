@@ -11,7 +11,7 @@ interface Location {
 interface LocationCardsProps {
   // These props were in the reference, but the current usage in Index.tsx might not pass them.
   // We'll make them optional and handle internal state if not provided.
-  selectedLocation?: string; 
+  selectedLocation?: string;
   onLocationSelect?: (locationId: string) => void;
 }
 
@@ -29,7 +29,7 @@ export default function LocationCards({
 }: LocationCardsProps) {
   // Handle internal state if props are not provided (since Index.tsx usage might change later)
   const [internalSelectedLocation, setInternalSelectedLocation] = useState<string>("");
-  
+
   const selectedLocation = propSelectedLocation !== undefined ? propSelectedLocation : internalSelectedLocation;
   const onLocationSelect = (id: string) => {
     if (propOnLocationSelect) {
@@ -51,13 +51,13 @@ export default function LocationCards({
       try {
         setLoading(true);
         const cities = await api.getCities();
-        
+
         // Map City to Location interface
         const allLocations: Location[] = cities.map((city, index) => ({
           id: city.id.toString(),
           name: city.name,
           // Use city image if available, else fallback to cyclic default images
-          image: city.image || defaultImages[index % defaultImages.length], 
+          image: city.image || defaultImages[index % defaultImages.length],
         }));
 
         // --- Start of new sorting logic (from reference) ---
@@ -96,26 +96,26 @@ export default function LocationCards({
 
         // Fallback in case one of the key locations wasn't found
         if (!pawna || !lonavala || !karjat) {
-           // If we don't have the specific ones, just use the API order or sort alphabetically?
-           // The reference used a fallback sort. We'll just use what we have if specific ones are missing.
-           if (sortedLocations.length === 0) {
-              // If completely empty after logic (unlikely unless allLocations is empty), use allLocations
-               setFetchedLocations(allLocations);
-           } else {
-               setFetchedLocations(sortedLocations);
-           }
+          // If we don't have the specific ones, just use the API order or sort alphabetically?
+          // The reference used a fallback sort. We'll just use what we have if specific ones are missing.
+          if (sortedLocations.length === 0) {
+            // If completely empty after logic (unlikely unless allLocations is empty), use allLocations
+            setFetchedLocations(allLocations);
+          } else {
+            setFetchedLocations(sortedLocations);
+          }
         } else {
           setFetchedLocations(sortedLocations);
         }
-        
+
         // helper to set default selection if none
         if (sortedLocations.length > 0 && !selectedLocation) {
-             // If we have a preferred "Pawna" (index 0), select it initially?
-             // Or just leave it blank. The reference `selectedLocation` comes from props usually.
-             // If internally managed, we might want to default select the first one.
-             if (!propSelectedLocation) {
-                 // onLocationSelect(sortedLocations[0].id); // Optional: select first by default
-             }
+          // If we have a preferred "Pawna" (index 0), select it initially?
+          // Or just leave it blank. The reference `selectedLocation` comes from props usually.
+          // If internally managed, we might want to default select the first one.
+          if (!propSelectedLocation) {
+            // onLocationSelect(sortedLocations[0].id); // Optional: select first by default
+          }
         }
 
       } catch (error) {
@@ -124,7 +124,7 @@ export default function LocationCards({
         setLoading(false);
       }
     };
-    
+
     loadLocations();
   }, []); // Run once on mount
 
@@ -159,12 +159,12 @@ export default function LocationCards({
     // If we have fewer items than needed for the carousel logic (5 items: -2 to +2), handle gracefully
     // But assuming we have enough locations or the modulo logic handles it.
     // If len < 5, there might be duplicates in view, but that's acceptable for this visual effect.
-    
+
     for (let i = -2; i <= 2; i++) {
-        // Javascript modulo for negative numbers behavior correction
+      // Javascript modulo for negative numbers behavior correction
       let idx = (current + i) % len;
       if (idx < 0) idx += len;
-      
+
       items.push({ ...fetchedLocations[idx], level: i });
     }
     return items;
@@ -291,16 +291,16 @@ export default function LocationCards({
                 transform: "translate3d(0,0,0)",
               }}
             >
-            {fetchedLocations.map((location, index) => (
-              <div key={location.id} className="snap-center">
-                <LocationCard
-                  location={location}
-                  isSelected={selectedLocation === location.id}
-                  onClick={() => onLocationSelect(location.id)}
-                  animationDelay={index * 100}
-                />
-              </div>
-            ))}
+              {fetchedLocations.map((location, index) => (
+                <div key={location.id} className="snap-center">
+                  <LocationCard
+                    location={location}
+                    isSelected={selectedLocation === location.id}
+                    onClick={() => onLocationSelect(location.id)}
+                    animationDelay={index * 100}
+                  />
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -312,7 +312,7 @@ export default function LocationCards({
             height: "260px", // Increased height for better visibility
             maxWidth: "100%",
             perspective: "1200px",
-            overflow: "visible",
+            overflow: "hidden",
             transform: "translate3d(0,0,0)",
           }}
           onTouchStart={handleTouchStart}
@@ -342,8 +342,8 @@ export default function LocationCards({
                 className={`
           group transition-all duration-500 hardware-accelerated
           ${selectedLocation === location.id && location.level === 0
-            ? "ring-2 ring-emerald-400"
-            : ""}
+                    ? "ring-2 ring-emerald-400"
+                    : ""}
         `}
               >
                 <img
@@ -374,10 +374,9 @@ export default function LocationCards({
                     <div
                       className={`
                         inline-block px-4 py-2 rounded-full font-medium transition-all duration-300 transform-gpu
-                        ${
-                          selectedLocation === location.id
-                            ? "bg-emerald-400 text-emerald-900 shadow-lg"
-                            : "bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm"
+                        ${selectedLocation === location.id
+                          ? "bg-emerald-400 text-emerald-900 shadow-lg"
+                          : "bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm"
                         }
                       `}
                       style={{
@@ -453,11 +452,10 @@ function LocationCard({
           <div
             className={`
             inline-block px-6 py-3 rounded-full font-medium transition-colors duration-300
-            ${
-              isSelected
+            ${isSelected
                 ? "bg-emerald-400 text-emerald-900"
                 : "bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm"
-            }
+              }
           `}
           >
             {isSelected ? "Selected" : "Explore"}

@@ -492,8 +492,8 @@ const BookingPage = () => {
 
   // Calculate total based on per-person pricing if available
   const subtotal = (totalAdults * pricePerNight + totalChildren * childPrice) * nights;
-  const serviceFee = Math.round(subtotal * 0.05); // 5% service fee
-  const totalBeforeDiscount = subtotal + serviceFee;
+  /* Service fee removed as per request */
+  const totalBeforeDiscount = subtotal;
   const total = Math.max(0, totalBeforeDiscount - discount);
   const advanceAmount = Math.round(total * 0.3); // 30% advance
 
@@ -640,7 +640,7 @@ const BookingPage = () => {
         throw new Error(bookingResponse.error || 'Failed to create booking');
       }
 
-      const bookingId = bookingResponse.booking_id || bookingResponse.id;
+      const bookingId = bookingResponse.booking_id || bookingResponse.id || bookingResponse.data?.booking_id;
 
       // Initiate payment
       const paymentPayload = {
@@ -979,7 +979,7 @@ const BookingPage = () => {
 
           {/* Description with Show More - positioned next to price */}
           {property.description && property.description.trim() && (
-            <div className="mt-6 relative z-10 pb-24">
+            <div className="mt-6 relative z-10 pb-10">
               <div className="relative">
                 <div
                   className={`text-gray-600 text-base leading-relaxed transition-all prose prose-sm max-w-none ${!showFullDescription ? "max-h-24 overflow-hidden" : ""
@@ -1092,48 +1092,57 @@ const BookingPage = () => {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.5 }}
-              className="bg-white rounded-3xl shadow-card border border-gray-100 overflow-hidden"
+              className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden"
             >
-              {/* Header with Timeline */}
-              <div className="bg-primary/10 p-6 md:p-8 border-b border-primary/10">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm">
-                    <User size={24} />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-primary">Guest Details</h2>
-                    <p className="text-primary/80 text-sm">Who should we send the booking details to?</p>
-                  </div>
-                </div>
+              {/* Modern Header & Progress */}
+              <div className="bg-white p-5 md:p-8 border-b border-gray-100">
+                <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">Guest Details</h2>
 
-                {/* Timeline Progress Bar */}
-                <div className="relative">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-gray-500">Personal Info</span>
-                    <span className="text-xs font-medium text-gray-500">Room Setup</span>
-                    <span className="text-xs font-medium text-gray-500">Meal Preferences</span>
-                  </div>
-                  <div className="relative">
-                    <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-primary to-primary/80 transition-all duration-500 ease-out"
-                        style={{ width: `${(currentStep / 3) * 100}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between -mt-2 relative z-10">
-                      {[1, 2, 3].map((step) => (
-                        <div key={step} className="flex flex-col items-center">
+                {/* sleek progress bar */}
+                <div className="max-w-2xl mx-auto">
+                  <div className="relative mb-6 md:mb-8">
+                    {/* Background Line */}
+                    <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-100 -translate-y-1/2 rounded-full"></div>
+
+                    {/* Active Line */}
+                    <div
+                      className="absolute top-1/2 left-0 h-1 bg-primary -translate-y-1/2 rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${((currentStep - 1) / 2) * 100}%` }}
+                    ></div>
+
+                    {/* Steps */}
+                    <div className="relative z-10 flex justify-between w-full px-1">
+                      {[
+                        { num: 1, label: "Personal Info" },
+                        { num: 2, label: "Room Setup" },
+                        { num: 3, label: "Meals" }
+                      ].map((step) => (
+                        <div key={step.num} className="flex flex-col items-center group cursor-default">
                           <div
-                            className={`w-4 h-4 rounded-full border-2 transition-all duration-300 ${step < currentStep
-                              ? 'bg-primary border-primary shadow-sm'
-                              : step === currentStep
-                                ? 'bg-primary border-primary shadow-sm animate-pulse'
-                                : 'bg-white border-gray-300'
-                              }`}
-                          />
-                          <span className={`text-xs mt-1 font-medium ${step <= currentStep ? 'text-primary' : 'text-gray-400'
-                            }`}>
-                            {step}
+                            className={`
+                              w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center border-4 transition-all duration-500
+                              ${step.num < currentStep
+                                ? 'bg-primary border-primary text-white scale-100'
+                                : step.num === currentStep
+                                  ? 'bg-white border-primary text-primary scale-110 shadow-lg'
+                                  : 'bg-white border-gray-100 text-gray-300'
+                              }
+                            `}
+                          >
+                            {step.num < currentStep ? (
+                              <Check size={14} strokeWidth={3} className="md:w-4 md:h-4" />
+                            ) : (
+                              <span className="text-xs md:text-sm font-bold">{step.num}</span>
+                            )}
+                          </div>
+                          <span
+                            className={`
+                              mt-2 md:mt-3 text-[10px] md:text-xs font-semibold uppercase tracking-wider transition-colors duration-300 text-center
+                              ${step.num <= currentStep ? 'text-primary' : 'text-gray-400'}
+                              ${step.num !== currentStep ? 'hidden sm:block' : 'block'}
+                            `}
+                          >
+                            {step.label}
                           </span>
                         </div>
                       ))}
@@ -1143,82 +1152,82 @@ const BookingPage = () => {
               </div>
 
               {/* Multi-Step Form Content */}
-              <div className="relative overflow-hidden">
-                <div className="p-6 md:p-8">
-                  {/* Step Content with Slide Animation */}
-                  <div className="relative min-h-[500px] overflow-hidden">
+              <div className="relative overflow-hidden bg-gray-50/30">
+                <div className="p-4 md:p-10">
+                  <div className="relative min-h-[400px]">
                     {/* Step 1: Personal Information */}
                     <motion.div
                       className="w-full"
-                      initial={{ opacity: 1, x: 0 }}
+                      initial={false}
                       animate={{
                         opacity: currentStep === 1 ? 1 : 0,
-                        x: currentStep === 1 ? 0 : currentStep > 1 ? '-100%' : '100%'
-                      }}
-                      transition={{ duration: 0.5, ease: "easeInOut" }}
-                      style={{
-                        position: currentStep === 1 ? 'relative' : 'absolute',
+                        x: currentStep === 1 ? 0 : currentStep > 1 ? -50 : 50,
                         pointerEvents: currentStep === 1 ? 'auto' : 'none',
-                        visibility: currentStep === 1 ? 'visible' : 'hidden'
+                        display: currentStep === 1 ? 'block' : 'none'
                       }}
+                      transition={{ duration: 0.4, ease: "easeInOut" }}
                     >
-                      <div className="space-y-6">
-                        <div className="text-center mb-6">
-                          <h3 className="text-xl font-bold text-gray-900 mb-2">Personal Information</h3>
-                          <p className="text-gray-600 text-sm">Please provide your contact details</p>
+                      <div className="max-w-xl mx-auto space-y-8">
+                        <div className="text-center">
+                          <h3 className="text-lg md:text-xl font-bold text-gray-900">Who's checking in?</h3>
+                          <p className="text-gray-500 mt-1">We'll send the booking confirmation to these details</p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="space-y-2">
-                            <Label htmlFor="name" className="text-gray-700 font-medium ml-1">Full Name</Label>
+                        <div className="space-y-5">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="name" className="text-gray-700 font-semibold text-sm">Full Name</Label>
                             <div className="relative group">
-                              <User className="absolute left-4 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
+                              <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors duration-300" />
                               <Input
                                 id="name"
-                                placeholder="John Doe"
-                                className="pl-12 rounded-xl border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary h-12 bg-gray-50/30 transition-all"
+                                placeholder="e.g. John Doe"
+                                className="pl-12 h-14 rounded-2xl border-gray-200 bg-white shadow-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-base"
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                               />
                             </div>
                           </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="email" className="text-gray-700 font-medium ml-1">Email Address</Label>
-                            <div className="relative group">
-                              <Mail className="absolute left-4 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
-                              <Input
-                                id="email"
-                                type="email"
-                                placeholder="john@example.com"
-                                className="pl-12 rounded-xl border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary h-12 bg-gray-50/30 transition-all"
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                              />
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div className="space-y-1.5">
+                              <Label htmlFor="email" className="text-gray-700 font-semibold text-sm">Email Address</Label>
+                              <div className="relative group">
+                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors duration-300" />
+                                <Input
+                                  id="email"
+                                  type="email"
+                                  placeholder="e.g. john@example.com"
+                                  className="pl-12 h-14 rounded-2xl border-gray-200 bg-white shadow-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-base"
+                                  value={formData.email}
+                                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                />
+                              </div>
                             </div>
-                          </div>
-                          <div className="space-y-2 md:col-span-2">
-                            <Label htmlFor="phone" className="text-gray-700 font-medium ml-1">Phone Number</Label>
-                            <div className="relative group">
-                              <Phone className="absolute left-4 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
-                              <Input
-                                id="phone"
-                                type="tel"
-                                placeholder="+91 98765 43210"
-                                className="pl-12 rounded-xl border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary h-12 bg-gray-50/30 transition-all"
-                                value={formData.phone}
-                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                              />
+                            <div className="space-y-1.5">
+                              <Label htmlFor="phone" className="text-gray-700 font-semibold text-sm">Phone Number</Label>
+                              <div className="relative group">
+                                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors duration-300" />
+                                <Input
+                                  id="phone"
+                                  type="tel"
+                                  placeholder="e.g. +91 98765 43210"
+                                  className="pl-12 h-14 rounded-2xl border-gray-200 bg-white shadow-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-base"
+                                  value={formData.phone}
+                                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>
 
-                        <div className="flex justify-end pt-4">
+                        <div className="flex justify-end pt-6">
                           <Button
                             onClick={() => setCurrentStep(2)}
                             disabled={!formData.name.trim() || !formData.email.trim() || !formData.phone.trim()}
-                            className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white px-8 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
+                            className="bg-primary hover:bg-primary/90 text-white px-10 py-6 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:hover:translate-y-0 disabled:shadow-none"
                           >
-                            Next: Room Setup
+                            Continue to Rooms
+                            <ChevronRight className="ml-2 w-5 h-5" />
                           </Button>
                         </div>
                       </div>
@@ -1227,113 +1236,107 @@ const BookingPage = () => {
                     {/* Step 2: Room Configuration */}
                     <motion.div
                       className="w-full"
-                      initial={{ opacity: 0, x: '100%' }}
+                      initial={false}
                       animate={{
                         opacity: currentStep === 2 ? 1 : 0,
-                        x: currentStep === 2 ? 0 : currentStep > 2 ? '-100%' : '100%'
-                      }}
-                      transition={{ duration: 0.5, ease: "easeInOut" }}
-                      style={{
-                        position: currentStep === 2 ? 'relative' : 'absolute',
+                        x: currentStep === 2 ? 0 : currentStep > 2 ? -50 : 50,
                         pointerEvents: currentStep === 2 ? 'auto' : 'none',
-                        visibility: currentStep === 2 ? 'visible' : 'hidden'
+                        display: currentStep === 2 ? 'block' : 'none'
                       }}
+                      transition={{ duration: 0.4, ease: "easeInOut" }}
                     >
-                      <div className="space-y-6">
-                        <div className="text-center mb-6">
-                          <h3 className="text-xl font-bold text-gray-900 mb-2">Room Configuration</h3>
-                          <p className="text-gray-600 text-sm">Customize guests per room</p>
-                        </div>
-
-                        <div className="flex items-center justify-between mb-6">
+                      <div className="max-w-2xl mx-auto space-y-8">
+                        <div className="flex flex-col md:flex-row items-center justify-between bg-white p-5 md:p-6 rounded-3xl border border-gray-100 shadow-sm gap-4">
                           <div>
-                            <h4 className="text-lg font-bold text-gray-900">Number of Rooms</h4>
-                            <p className="text-sm text-gray-500">Select how many rooms you need</p>
+                            <h4 className="text-lg font-bold text-gray-900">Total Rooms Required</h4>
+                            <p className="text-sm text-gray-500">Adjust the number of rooms needed</p>
                           </div>
-                          <div className="flex items-center gap-4 bg-gray-50 p-1.5 rounded-xl border border-gray-200">
+                          <div className="flex items-center gap-6 bg-gray-50 px-2 py-2 rounded-2xl border border-gray-100">
                             <button
                               type="button"
                               onClick={() => handleRoomsChange(rooms - 1)}
                               disabled={rooms <= 1}
-                              className="w-9 h-9 rounded-lg bg-white shadow-sm border border-gray-200 flex items-center justify-center text-gray-600 hover:text-primary hover:border-primary transition-all disabled:opacity-50 disabled:hover:border-gray-200 disabled:hover:text-gray-600"
+                              className="w-12 h-12 rounded-xl bg-white shadow-sm border border-gray-200 flex items-center justify-center text-gray-600 hover:text-primary hover:border-primary active:scale-90 transition-all disabled:opacity-40"
                             >
-                              <span className="text-lg font-medium leading-none mb-0.5">−</span>
+                              <span className="text-xl font-semibold mb-1">−</span>
                             </button>
-                            <span className="text-base font-bold text-gray-900 w-16 text-center">{rooms} Room{rooms > 1 ? 's' : ''}</span>
+                            <span className="text-xl font-bold text-gray-900 w-24 text-center tabular-nums">{rooms} Room{rooms > 1 ? 's' : ''}</span>
                             <button
                               type="button"
                               onClick={() => handleRoomsChange(rooms + 1)}
                               disabled={rooms >= maxRoomsForSelection}
-                              className="w-9 h-9 rounded-lg bg-white shadow-sm border border-gray-200 flex items-center justify-center text-gray-600 hover:text-primary hover:border-primary transition-all disabled:opacity-50 disabled:hover:border-gray-200 disabled:hover:text-gray-600"
+                              className="w-12 h-12 rounded-xl bg-white shadow-sm border border-gray-200 flex items-center justify-center text-gray-600 hover:text-primary hover:border-primary active:scale-90 transition-all disabled:opacity-40"
                             >
-                              <span className="text-lg font-medium leading-none mb-0.5">+</span>
+                              <span className="text-xl font-semibold mb-1">+</span>
                             </button>
                           </div>
                         </div>
 
-                        <div className="space-y-4">
+                        <div className="grid grid-cols-1 gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                           {roomGuests.slice(0, rooms).map((room, idx) => (
                             <motion.div
                               key={`room-${idx}`}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: idx * 0.1 }}
-                              className="border border-gray-100 rounded-2xl p-4 hover:border-primary/30 hover:shadow-md transition-all bg-white"
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: idx * 0.05 }}
+                              className="bg-white border border-gray-100 rounded-3xl p-6 hover:shadow-md transition-all group"
                             >
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                                <div className="flex items-center gap-4">
+                                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg group-hover:bg-primary group-hover:text-white transition-colors duration-300">
                                     {idx + 1}
                                   </div>
-                                  <span className="font-semibold text-gray-700">Room {idx + 1}</span>
+                                  <div>
+                                    <span className="block font-bold text-gray-900 text-lg">Room {idx + 1}</span>
+                                    <span className="text-sm text-gray-500">Configure occupants</span>
+                                  </div>
                                 </div>
 
-                                <div className="flex items-center gap-6">
-                                  {/* Adults Control */}
-                                  <div className="flex flex-col items-center gap-1">
-                                    <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Adults</span>
-                                    <div className="flex items-center gap-3 bg-gray-50 rounded-full p-1 border border-gray-100">
+                                <div className="flex items-center gap-6 sm:gap-8">
+                                  {/* Adults */}
+                                  <div className="flex flex-col items-center gap-2">
+                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Adults</span>
+                                    <div className="flex items-center gap-2">
                                       <button
                                         type="button"
                                         onClick={() => handleRoomGuestChange(idx, 'adults', room.adults - 1)}
                                         disabled={room.adults <= 1}
-                                        className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition-all disabled:opacity-40"
+                                        className="w-9 h-9 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-600 hover:border-primary hover:text-primary transition-all disabled:opacity-30"
                                       >
                                         −
                                       </button>
-                                      <span className="font-bold text-gray-900 w-4 text-center">{room.adults}</span>
+                                      <span className="font-bold text-gray-900 w-6 text-center text-lg">{room.adults}</span>
                                       <button
                                         type="button"
                                         onClick={() => handleRoomGuestChange(idx, 'adults', room.adults + 1)}
                                         disabled={room.adults + room.children >= (property?.capacity || 4)}
-                                        className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition-all disabled:opacity-40"
+                                        className="w-9 h-9 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-600 hover:border-primary hover:text-primary transition-all disabled:opacity-30"
                                       >
                                         +
                                       </button>
                                     </div>
                                   </div>
 
-                                  {/* Divider */}
-                                  <div className="w-px h-10 bg-gray-100 hidden sm:block" />
+                                  <div className="w-px h-10 bg-gray-100 hidden sm:block"></div>
 
-                                  {/* Children Control */}
-                                  <div className="flex flex-col items-center gap-1">
-                                    <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Children</span>
-                                    <div className="flex items-center gap-3 bg-gray-50 rounded-full p-1 border border-gray-100">
+                                  {/* Children */}
+                                  <div className="flex flex-col items-center gap-2">
+                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Children</span>
+                                    <div className="flex items-center gap-2">
                                       <button
                                         type="button"
                                         onClick={() => handleRoomGuestChange(idx, 'children', room.children - 1)}
                                         disabled={room.children <= 0}
-                                        className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition-all disabled:opacity-40"
+                                        className="w-9 h-9 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-600 hover:border-primary hover:text-primary transition-all disabled:opacity-30"
                                       >
                                         −
                                       </button>
-                                      <span className="font-bold text-gray-900 w-4 text-center">{room.children}</span>
+                                      <span className="font-bold text-gray-900 w-6 text-center text-lg">{room.children}</span>
                                       <button
                                         type="button"
                                         onClick={() => handleRoomGuestChange(idx, 'children', room.children + 1)}
                                         disabled={room.adults + room.children >= (property?.capacity || 4)}
-                                        className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition-all disabled:opacity-40"
+                                        className="w-9 h-9 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-600 hover:border-primary hover:text-primary transition-all disabled:opacity-30"
                                       >
                                         +
                                       </button>
@@ -1345,19 +1348,21 @@ const BookingPage = () => {
                           ))}
                         </div>
 
-                        <div className="flex justify-between pt-4">
+                        <div className="flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center gap-3 pt-4 border-t border-gray-100">
                           <Button
                             onClick={() => setCurrentStep(1)}
-                            variant="outline"
-                            className="px-6 py-3 rounded-xl border-gray-200 hover:border-primary hover:text-primary transition-all"
+                            variant="ghost"
+                            className="w-full sm:w-auto text-gray-500 hover:text-gray-900 font-medium"
                           >
+                            <ChevronLeft className="w-4 h-4 mr-2" />
                             Back
                           </Button>
                           <Button
                             onClick={() => setCurrentStep(3)}
-                            className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white px-8 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
+                            className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white px-6 md:px-10 py-4 md:py-6 rounded-2xl font-bold text-base md:text-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 active:scale-95"
                           >
-                            Next: Meal Preferences
+                            Continue to Meals
+                            <ChevronRight className="ml-2 w-5 h-5" />
                           </Button>
                         </div>
                       </div>
@@ -1366,101 +1371,101 @@ const BookingPage = () => {
                     {/* Step 3: Meal Preferences */}
                     <motion.div
                       className="w-full"
-                      initial={{ opacity: 0, x: '100%' }}
+                      initial={false}
                       animate={{
                         opacity: currentStep === 3 ? 1 : 0,
-                        x: currentStep === 3 ? 0 : '100%'
-                      }}
-                      transition={{ duration: 0.5, ease: "easeInOut" }}
-                      style={{
-                        position: currentStep === 3 ? 'relative' : 'absolute',
+                        x: currentStep === 3 ? 0 : 50,
                         pointerEvents: currentStep === 3 ? 'auto' : 'none',
-                        visibility: currentStep === 3 ? 'visible' : 'hidden'
+                        display: currentStep === 3 ? 'block' : 'none'
                       }}
+                      transition={{ duration: 0.4, ease: "easeInOut" }}
                     >
-                      <div className="space-y-6">
-                        <div className="text-center mb-6">
-                          <h3 className="text-xl font-bold text-gray-900 mb-2">Meal Preferences</h3>
-                          <p className="text-gray-600 text-sm">Choose your dining preferences for the stay</p>
+                      <div className="max-w-2xl mx-auto space-y-8">
+                        <div className="text-center">
+                          <h3 className="text-lg md:text-xl font-bold text-gray-900">Dining Preferences</h3>
+                          <p className="text-gray-500 mt-1">Please specify meal types for your group</p>
                         </div>
 
-                        {/* Meal Preferences Content */}
-                        <div className="space-y-6">
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {[
-                              { type: 'veg', label: 'Vegetarian', icon: UtensilsCrossed, color: 'text-green-600' },
-                              { type: 'nonveg', label: 'Non-Vegetarian', icon: Utensils, color: 'text-red-600' },
-                              { type: 'jain', label: 'Jain', icon: Coffee, color: 'text-orange-600' }
-                            ].map((meal) => (
-                              <div key={meal.type} className="text-center">
-                                <div className={`w-16 h-16 mx-auto mb-3 rounded-2xl bg-gray-50 flex items-center justify-center ${meal.color} border-2 border-gray-100 hover:border-primary/30 transition-all`}>
-                                  <meal.icon size={24} />
-                                </div>
-                                <h4 className="font-semibold text-gray-900 mb-2">{meal.label}</h4>
-                                <div className="flex items-center justify-center gap-3 bg-gray-50 rounded-full p-1 border border-gray-100 max-w-fit mx-auto">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleFoodCount(meal.type as keyof FoodCounts, -1)}
-                                    disabled={(foodCounts[meal.type as keyof FoodCounts] || 0) <= 0}
-                                    className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition-all disabled:opacity-40"
-                                  >
-                                    −
-                                  </button>
-                                  <span className="font-bold text-gray-900 w-6 text-center">{foodCounts[meal.type as keyof FoodCounts] || 0}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleFoodCount(meal.type as keyof FoodCounts, 1)}
-                                    className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition-all"
-                                  >
-                                    +
-                                  </button>
-                                </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          {[
+                            { type: 'veg', label: 'Vegetarian', icon: UtensilsCrossed, color: 'text-green-600', bg: 'bg-green-50' },
+                            { type: 'nonveg', label: 'Non-Veg', icon: Utensils, color: 'text-red-600', bg: 'bg-red-50' },
+                            { type: 'jain', label: 'Jain', icon: Coffee, color: 'text-orange-600', bg: 'bg-orange-50' }
+                          ].map((meal) => (
+                            <div key={meal.type} className="bg-white border border-gray-100 rounded-3xl p-6 text-center hover:shadow-lg transition-all duration-300">
+                              <div className={`w-14 h-14 mx-auto mb-4 rounded-2xl ${meal.bg} flex items-center justify-center ${meal.color}`}>
+                                <meal.icon size={28} />
                               </div>
-                            ))}
-                          </div>
+                              <h4 className="font-bold text-gray-900 mb-4">{meal.label}</h4>
+                              <div className="flex items-center justify-center gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => handleFoodCount(meal.type as keyof FoodCounts, -1)}
+                                  disabled={(foodCounts[meal.type as keyof FoodCounts] || 0) <= 0}
+                                  className="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-600 hover:border-primary hover:text-primary transition-all disabled:opacity-40"
+                                >
+                                  −
+                                </button>
+                                <span className="font-bold text-gray-900 w-8 text-xl">{foodCounts[meal.type as keyof FoodCounts] || 0}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleFoodCount(meal.type as keyof FoodCounts, 1)}
+                                  className="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-600 hover:border-primary hover:text-primary transition-all"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
 
-                          <div className="flex justify-between pt-4">
-                            <Button
-                              onClick={() => setCurrentStep(2)}
-                              variant="outline"
-                              className="px-6 py-3 rounded-xl border-gray-200 hover:border-primary hover:text-primary transition-all"
-                            >
-                              Back
-                            </Button>
-                            <Button
-                              onClick={handleBooking}
-                              disabled={isLoading}
-                              className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white px-8 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {isLoading ? "Processing..." : "Complete Booking"}
-                            </Button>
+                        {/* Special Requests */}
+                        <div className="pt-6 border-t border-gray-100">
+                          <div className="bg-white rounded-2xl p-4 border border-gray-200 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                            <Label htmlFor="specialRequests" className="text-gray-700 font-semibold text-sm mb-2 block">Special Requests (Optional)</Label>
+                            <textarea
+                              id="specialRequests"
+                              placeholder="Any specific requirements, allergies, or questions?"
+                              className="w-full border-none focus:ring-0 p-0 text-gray-700 placeholder-gray-400 bg-transparent resize-none"
+                              rows={3}
+                              value={formData.specialRequests}
+                              onChange={(e) => setFormData({ ...formData, specialRequests: e.target.value })}
+                            />
                           </div>
+                        </div>
+
+                        <div className="flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center gap-3 pt-4">
+                          <Button
+                            onClick={() => setCurrentStep(2)}
+                            variant="ghost"
+                            className="w-full sm:w-auto text-gray-500 hover:text-gray-900 font-medium"
+                          >
+                            <ChevronLeft className="w-4 h-4 mr-2" />
+                            Back
+                          </Button>
+                          <Button
+                            onClick={handleBooking}
+                            disabled={isLoading}
+                            className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white px-6 md:px-10 py-4 md:py-6 rounded-2xl font-bold text-base md:text-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:translate-y-0"
+                          >
+                            {isLoading ? (
+                              <>
+                                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                Processing...
+                              </>
+                            ) : (
+                              <>
+                                Complete Booking
+                                <Check className="ml-2 w-5 h-5" />
+                              </>
+                            )}
+                          </Button>
                         </div>
                       </div>
                     </motion.div>
                   </div>
-
-                  {/* Special Requests - Always visible at bottom */}
-                  <div className="mt-8 pt-8 border-t border-gray-200">
-                    <div className="space-y-3">
-                      <Label htmlFor="specialRequests" className="text-gray-700 font-medium">Special Requests (Optional)</Label>
-                      <textarea
-                        id="specialRequests"
-                        placeholder="Any special requests or notes for your stay..."
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-gray-50/30 transition-all resize-none"
-                        rows={3}
-                        value={formData.specialRequests}
-                        onChange={(e) => setFormData({ ...formData, specialRequests: e.target.value })}
-                      />
-                      <p className="text-xs text-gray-500">We'll do our best to accommodate your requests</p>
-                    </div>
-                  </div>
                 </div>
               </div>
-
-
-
-
             </motion.div>
 
             {/* (Second date selection removed – calendar now lives only above with description) */}
@@ -1505,10 +1510,7 @@ const BookingPage = () => {
                       <span className="font-medium text-gray-900">₹{subtotal}</span>
                     </div>
                   )}
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">Service Fee (5%)</span>
-                    <span className="font-medium text-gray-900">₹{serviceFee}</span>
-                  </div>
+
 
                   {/* Coupon Section */}
                   <div className="mt-4 pt-4 border-t border-gray-100">
@@ -1634,14 +1636,6 @@ const BookingPage = () => {
                   ) : (
                     "Proceed to Pay"
                   )}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleDownloadPdf}
-                  className="w-full h-12 rounded-2xl border border-primary/20 text-primary hover:bg-primary/10 mt-3"
-                >
-                  Download Booking PDF
                 </Button>
 
                 <p className="text-xs text-center text-gray-400 mt-4 flex items-center justify-center gap-1">

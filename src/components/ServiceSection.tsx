@@ -35,77 +35,104 @@ const ServiceSection = () => {
     }
   ];
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.5,
+        ease: "easeOut"
+      }
+    }
+  };
+
   return (
-    <section className="py-16 bg-gradient-to-br from-slate-50 to-blue-50">
-      <div className="container mx-auto px-4">
+    <section className="py-24 bg-slate-50 relative overflow-hidden">
+      {/* Subtle Background Pattern */}
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
+        <div className="absolute top-0 left-0 w-96 h-96 bg-primary rounded-full mix-blend-multiply filter blur-3xl translate-x-[-50%] translate-y-[-50%]"></div>
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl translate-x-[50%] translate-y-[50%]"></div>
+      </div>
+
+      <div className="container mx-auto px-4 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="text-center mb-16"
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          viewport={{ once: true, margin: "-100px" }}
+          className="text-center mb-20"
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            We're Providing{" "}
-            <span className="bg-gradient-to-r from-green-600 to-blue-500 bg-clip-text text-transparent">
-              Best Service Ever
-            </span>
+          <span className="inline-block py-1 px-3 rounded-full bg-primary/10 text-primary text-sm font-semibold tracking-wide uppercase mb-4">
+            Why Choose Us
+          </span>
+          <h2 className="text-4xl md:text-5xl font-display font-bold text-slate-900 mb-6 tracking-tight">
+            We Provide The{" "}
+            <span className="relative">
+              <span className="relative z-10 text-primary">Best Service</span>
+              <span className="absolute bottom-1 left-0 w-full h-3 bg-primary/20 -z-0 rounded-sm"></span>
+            </span>{" "}
+            Ever
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
             Experience unparalleled hospitality and create memories that last a lifetime with our premium services and dedicated team.
           </p>
         </motion.div>
 
-        {/* Unified Service Showcase */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          viewport={{ once: true }}
-          className="bg-white rounded-3xl shadow-2xl overflow-hidden"
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-50px" }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
         >
-          {/* Top decorative bar */}
-          <div className="h-2 bg-gradient-to-r from-green-500 via-blue-400 to-green-500"></div>
+          {services.map((service, index) => (
+            <motion.div
+              key={index}
+              variants={itemVariants}
+              className="group relative bg-white rounded-3xl p-8 hover:shadow-xl transition-all duration-300 border border-slate-100/50 overflow-hidden"
+            >
+              {/* Hover Gradient Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
-          <div className="p-8 md:p-12">
-            {/* Service Grid - Responsive */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10">
-              {services.map((service, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: index * 0.1 }}
-                  viewport={{ once: true }}
-                  className="flex flex-col items-center text-center group"
-                >
-                  {/* Icon with connecting line */}
-                  <div className="relative mb-6">
-                    <div className="flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-500 to-green-600 rounded-full shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
-                      <service.icon className="w-10 h-10 text-white" />
-                    </div>
-                    {/* Connecting line (hidden on mobile, shown on larger screens) */}
-                    {index < services.length - 1 && (
-                      <div className="hidden lg:block absolute top-10 left-full w-20 h-0.5 bg-gradient-to-r from-green-300 to-blue-300 -translate-y-1/2">
-                      </div>
-                    )}
-                  </div>
+              <div className="relative z-10 flex flex-col items-start text-left">
+                <div className="mb-6 p-4 rounded-2xl bg-slate-50 group-hover:bg-white group-hover:shadow-md transition-all duration-300">
+                  <service.icon className="w-8 h-8 text-primary group-hover:scale-110 transition-transform duration-300" />
+                </div>
 
-                  {/* Content */}
-                  <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3 group-hover:text-green-600 transition-colors duration-300">
-                    {service.title}
-                  </h3>
-                  <p className="text-gray-600 leading-relaxed text-sm md:text-base max-w-xs">
-                    {service.description}
-                  </p>
-                </motion.div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-primary transition-colors duration-300">
+                  {service.title}
+                </h3>
+
+                <p className="text-slate-600 leading-relaxed">
+                  {service.description}
+                </p>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* Bottom Call to Action or Trust Indicator could go here */}
+        <div className="mt-20 text-center">
+          <div className="inline-flex items-center gap-2 text-slate-500 text-sm font-medium">
+            <div className="flex -space-x-2">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-slate-200" />
               ))}
             </div>
-
-            {/* Bottom decorative bar */}
-            <div className="mt-12 h-2 bg-gradient-to-r from-blue-400 via-green-500 to-blue-400"></div>
+            <span>Trusted by 10,000+ happy guests</span>
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

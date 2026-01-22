@@ -16,10 +16,10 @@ const Footer = () => {
             <div className="flex items-center gap-2 mb-6">
               <img
                 src="/logo.png"
-                alt="Pavana Agro Tourism"
+                alt="Arnastays"
                 className="w-10 h-10 object-contain"
               />
-              <span className="font-display text-xl font-semibold">Pavana Agro Tourism</span>
+              <span className="font-display text-xl font-semibold">Arnastays</span>
             </div>
             <p className="text-white/70 leading-relaxed mb-6">
               Experience the perfect lakeside getaway with our premium cottages, luxury villas and exciting activities at Pawna Lake.
