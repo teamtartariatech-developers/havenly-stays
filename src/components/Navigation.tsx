@@ -43,12 +43,16 @@ const Navigation = () => {
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-display text-lg font-bold">E</span>
-            </div>
+            <img
+              src="/logo.png"
+              alt="Pavana Agro Tourism"
+              className="w-10 h-10 object-contain"
+            />
             <span className={`font-display text-xl font-semibold transition-colors ${
               isScrolled ? 'text-foreground' : 'text-white'
-            }`}>Evergreen</span>
+            }`}>
+              Pavana Agro Tourism
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -70,7 +74,7 @@ const Navigation = () => {
               </Link>
             ))}
             <a
-              href="tel:+1234567890"
+              href="tel:+918668322633"
               className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-full text-sm font-medium hover:bg-primary/90 transition-colors"
             >
               <Phone className="w-4 h-4" />
@@ -123,7 +127,7 @@ const Navigation = () => {
                 </motion.div>
               ))}
               <motion.a
-                href="tel:+1234567890"
+                href="tel:+918668322633"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.4 }}

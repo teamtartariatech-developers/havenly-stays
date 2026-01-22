@@ -55,6 +55,7 @@ const pastEvents = [
 
 const EventsSection = () => {
   const [selectedEvent, setSelectedEvent] = useState<typeof pastEvents[0] | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
 
   return (
     <section className="py-16 md:py-24 relative overflow-hidden bg-[#050505]">
@@ -65,9 +66,10 @@ const EventsSection = () => {
           100% { transform: translateX(-50%); }
         }
         .animate-marquee {
-          animation: marquee 40s linear infinite;
+          animation: marquee 20s linear infinite;
         }
-        .animate-marquee:hover {
+        .animate-marquee:hover,
+        .animate-marquee.paused {
           animation-play-state: paused;
         }
       `}</style>
@@ -101,7 +103,13 @@ const EventsSection = () => {
         <div className="absolute inset-y-0 left-0 w-12 md:w-32 bg-gradient-to-r from-[#050505] to-transparent z-20 pointer-events-none" />
         <div className="absolute inset-y-0 right-0 w-12 md:w-32 bg-gradient-to-l from-[#050505] to-transparent z-20 pointer-events-none" />
 
-        <div className="flex w-max animate-marquee gap-6 md:gap-8 px-4">
+        <div 
+          className={`flex w-max animate-marquee gap-6 md:gap-8 px-4 ${isPaused ? 'paused' : ''}`}
+          onTouchStart={() => setIsPaused(true)}
+          onTouchEnd={() => setIsPaused(false)}
+          onMouseEnter={() => setIsPaused(true)}
+          onMouseLeave={() => setIsPaused(false)}
+        >
           {[...pastEvents, ...pastEvents].map((event, index) => (
             <div
               key={`${event.id}-${index}`}

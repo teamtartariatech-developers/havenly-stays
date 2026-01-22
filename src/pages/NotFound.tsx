@@ -9,7 +9,7 @@ const NotFound = () => {
     console.error("404 Error: User attempted to access non-existent route:", location.pathname);
     const canonical = `${window.location.origin}${location.pathname}`;
     updatePageMeta({
-      title: "Page Not Found | Havenly Stays",
+      title: "Page Not Found | Pavana Agro Tourism",
       description: "The page you are looking for does not exist.",
       canonical,
       noIndex: true,

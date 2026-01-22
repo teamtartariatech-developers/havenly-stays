@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Filter, X } from "lucide-react";
 import {
@@ -18,11 +18,35 @@ const propertyTypes = [
   { id: "treehouses", label: "Treehouses" },
 ];
 
-const SearchFilters = () => {
-  const [activeType, setActiveType] = useState("all");
+interface SearchFiltersProps {
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  activeType: string;
+  setActiveType: (type: string) => void;
+  priceRange: { min: string; max: string };
+  setPriceRange: (range: { min: string; max: string }) => void;
+  amenitiesFilter: string[];
+  setAmenitiesFilter: (amenities: string[]) => void;
+}
+
+const SearchFilters = ({
+  searchQuery,
+  setSearchQuery,
+  activeType,
+  setActiveType,
+  priceRange,
+  setPriceRange,
+  amenitiesFilter,
+  setAmenitiesFilter,
+}: SearchFiltersProps) => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [localPriceRange, setLocalPriceRange] = useState(priceRange);
   const sectionRef = useRef<HTMLElement>(null);
+
+  // Sync local price range with prop when it changes
+  useEffect(() => {
+    setLocalPriceRange(priceRange);
+  }, [priceRange]);
 
   return (
     <section 
@@ -183,12 +207,16 @@ const SearchFilters = () => {
                 <input
                   type="number"
                   placeholder="Min"
+                  value={localPriceRange.min}
+                  onChange={(e) => setLocalPriceRange({ ...localPriceRange, min: e.target.value })}
                   className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
                 <span className="text-muted-foreground">to</span>
                 <input
                   type="number"
                   placeholder="Max"
+                  value={localPriceRange.max}
+                  onChange={(e) => setLocalPriceRange({ ...localPriceRange, max: e.target.value })}
                   className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
@@ -197,7 +225,10 @@ const SearchFilters = () => {
             {/* Action Buttons */}
             <div className="flex gap-3 pt-4">
               <button
-                onClick={() => setIsFilterOpen(false)}
+                onClick={() => {
+                  setPriceRange(localPriceRange);
+                  setIsFilterOpen(false);
+                }}
                 className="flex-1 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
               >
                 Apply Filters
@@ -205,6 +236,10 @@ const SearchFilters = () => {
               <button
                 onClick={() => {
                   setActiveType("all");
+                  setPriceRange({ min: "", max: "" });
+                  setLocalPriceRange({ min: "", max: "" });
+                  setSearchQuery("");
+                  setAmenitiesFilter([]);
                   setIsFilterOpen(false);
                 }}
                 className="px-6 py-3 rounded-lg border border-border bg-background font-medium hover:bg-secondary transition-colors"

@@ -102,7 +102,7 @@ const HeroSection = () => {
                 href="#properties"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="inline-flex items-center justify-center gap-2 bg-white text-forest-700 px-8 py-4 rounded-full font-medium text-lg shadow-elevated hover:shadow-2xl transition-all"
+                className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-green-700 text-white px-8 py-4 rounded-full font-medium text-lg shadow-elevated hover:shadow-2xl transition-all"
               >
                 Explore Stays
                 <ArrowRight className="w-5 h-5" />

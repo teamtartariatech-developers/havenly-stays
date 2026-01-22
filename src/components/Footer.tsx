@@ -14,10 +14,12 @@ const Footer = () => {
             viewport={{ once: true }}
           >
             <div className="flex items-center gap-2 mb-6">
-              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center">
-                <span className="text-forest-700 font-display text-lg font-bold">H</span>
-              </div>
-              <span className="font-display text-xl font-semibold">Havenly Stays</span>
+              <img
+                src="/logo.png"
+                alt="Pavana Agro Tourism"
+                className="w-10 h-10 object-contain"
+              />
+              <span className="font-display text-xl font-semibold">Pavana Agro Tourism</span>
             </div>
             <p className="text-white/70 leading-relaxed mb-6">
               Experience the perfect lakeside getaway with our premium cottages, luxury villas and exciting activities at Pawna Lake.
@@ -86,9 +88,9 @@ const Footer = () => {
                 </a>
               </li>
               <li>
-                <a href="tel:+919226869678" className="flex items-center gap-3 text-white/70 hover:text-white transition-colors">
+                <a href="tel:+918668322633" className="flex items-center gap-3 text-white/70 hover:text-white transition-colors">
                   <Phone className="w-5 h-5" />
-                  <span>+91 9226869678</span>
+                  <span>+91 8668322633</span>
                 </a>
               </li>
               <li>
@@ -105,11 +107,11 @@ const Footer = () => {
         <div className="pt-8 border-t border-white/10">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-white/50 text-sm text-center md:text-left">
-              © {new Date().getFullYear()} Gecestays. All rights reserved.
+              © {new Date().getFullYear()} Pavana Agro Tourism. All rights reserved.
             </p>
             <div className="flex gap-6 text-sm text-white/50">
-              <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-              <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+              <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
+              <Link to="/terms-of-service" className="hover:text-white transition-colors">Terms of Service</Link>
             </div>
           </div>
         </div>

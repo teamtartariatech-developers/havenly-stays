@@ -14,6 +14,8 @@ export interface Accommodation {
   images: string[];
   amenity_ids?: string[];
   address: string;
+  cityId?: number;
+  city_id?: number;
   latitude: number | string;
   longitude: number | string;
   package?: any;
@@ -36,8 +38,9 @@ export interface GalleryImage {
 export interface City {
   id: number;
   name: string;
-  state: string;
   country: string;
+  image?: string;
+  active?: number;
 }
 
 export interface Testimonial {
@@ -110,6 +113,8 @@ export const api = {
         : parseStringToArray(item.images),
       amenity_ids: parseStringToArray(item.amenity_ids),
       address: item.address || '',
+      cityId: item.city_id || item.cityId,
+      city_id: item.city_id || item.cityId,
       latitude: parseFloat(item.latitude) || 0,
       longitude: parseFloat(item.longitude) || 0,
       package: item.package || undefined,
@@ -165,9 +170,12 @@ export const api = {
     return {
       id: data.id || basicInfo.id,
       name: basicInfo.name || data.name,
+      description: packages.description || basicInfo.description || data.description || data.package_description || '',
       price: basicInfo.price || data.price || packages.pricing?.adult || 0,
       type: basicInfo.type || data.type,
       address: location.address || data.address || '',
+      cityId: location.city?.id || data.city_id || basicInfo.city_id || data.cityId || data.cityId,
+      city_id: location.city?.id || data.city_id || basicInfo.city_id || data.cityId || data.cityId,
       latitude: location.coordinates?.latitude || data.latitude || '18.5204',
       longitude: location.coordinates?.longitude || data.longitude || '73.8567',
       adult_price: packages.pricing?.adult || data.adult_price || basicInfo.price || 0,
@@ -203,10 +211,15 @@ export const api = {
 
   // Cities/Locations
   async getCities(): Promise<City[]> {
-    const response = await fetch(`${API_BASE_URL}/admin/properties/cities`);
+    const response = await fetch(`${API_BASE_URL}/admin/cities`);
     if (!response.ok) throw new Error('Failed to fetch cities');
     const data = await response.json();
-    return Array.isArray(data) ? data : data.data || [];
+    // Handle response structure: {success: true, data: [...]}
+    if (data.success && Array.isArray(data.data)) {
+      return data.data;
+    }
+    // Fallback for different response structures
+    return Array.isArray(data) ? data : (data.data || []);
   },
 
   // Availability

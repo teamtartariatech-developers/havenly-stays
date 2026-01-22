@@ -16,7 +16,7 @@ const Gallery = () => {
   useEffect(() => {
     const canonical = `${window.location.origin}/gallery`;
     updatePageMeta({
-      title: "Gallery | Havenly Stays Experiences",
+      title: "Gallery | Pavana Agro Tourism Experiences",
       description:
         "Explore our gallery of lakeside villas, cottages, and unforgettable moments at Pawna Lake.",
       canonical,

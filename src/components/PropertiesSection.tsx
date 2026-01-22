@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Star, MapPin, Users, Wifi, Car, Heart, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { api, Accommodation } from "@/services/api";
+import { api, Accommodation, City } from "@/services/api";
 
 interface Coupon {
   id: number;
@@ -91,10 +91,23 @@ const PropertyImageCarousel = ({
   );
 };
 
-const PropertiesSection = () => {
+interface PropertiesSectionProps {
+  searchQuery?: string;
+  activeType?: string;
+  priceRange?: { min: string; max: string };
+  amenitiesFilter?: string[];
+}
+
+const PropertiesSection = ({
+  searchQuery = "",
+  activeType = "all",
+  priceRange = { min: "", max: "" },
+  amenitiesFilter = [],
+}: PropertiesSectionProps) => {
   const navigate = useNavigate();
   const [properties, setProperties] = useState<Accommodation[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -128,6 +141,93 @@ const PropertiesSection = () => {
 
     fetchCoupons();
   }, []);
+
+  useEffect(() => {
+    const fetchCities = async () => {
+      try {
+        const citiesData = await api.getCities();
+        setCities(citiesData);
+      } catch (err) {
+        console.error("Error fetching cities:", err);
+      }
+    };
+
+    fetchCities();
+  }, []);
+
+  // Helper function to get city name from cityId
+  const getCityName = (property: Accommodation): string => {
+    const cityId = property.cityId || property.city_id;
+    if (!cityId) return property.address || 'Location';
+    const city = cities.find(c => c.id === cityId);
+    return city?.name || property.address || 'Location';
+  };
+
+  // Filter properties based on search and filters
+  const filteredProperties = properties.filter((property) => {
+    // Filter by property type
+    if (activeType !== "all") {
+      const propertyTypeLower = property.type?.toLowerCase().trim() || "";
+      const filterTypeLower = activeType.toLowerCase().trim();
+      
+      // Map filter types to actual property types (flexible matching)
+      const typeMap: { [key: string]: string[] } = {
+        camps: ["camp", "camps", "campsite", "campsites"],
+        cottages: ["cottage", "cottages"],
+        villas: ["villa", "villas"],
+        bungalows: ["bungalow", "bungalows"],
+        treehouses: ["treehouse", "treehouses", "tree house", "tree houses"],
+      };
+      
+      // Check if property type matches the filter
+      const mappedTypes = typeMap[filterTypeLower] || [filterTypeLower];
+      const matchesType = mappedTypes.some((t) => 
+        propertyTypeLower === t || propertyTypeLower.includes(t) || t.includes(propertyTypeLower)
+      );
+      
+      if (!matchesType) {
+        return false;
+      }
+    }
+
+    // Filter by search query (name, location, amenities)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const matchesName = property.name?.toLowerCase().includes(query);
+      const matchesLocation = property.address?.toLowerCase().includes(query);
+      const matchesFeatures = property.features?.some((f: string) =>
+        f.toLowerCase().includes(query)
+      );
+      const matchesPrice = property.price?.toString().includes(query) ||
+        property.adult_price?.toString().includes(query);
+      
+      if (!matchesName && !matchesLocation && !matchesFeatures && !matchesPrice) {
+        return false;
+      }
+    }
+
+    // Filter by price range
+    const propertyPrice = property.price || property.adult_price || 0;
+    if (priceRange.min && propertyPrice < parseFloat(priceRange.min)) {
+      return false;
+    }
+    if (priceRange.max && propertyPrice > parseFloat(priceRange.max)) {
+      return false;
+    }
+
+    // Filter by amenities
+    if (amenitiesFilter.length > 0 && property.features) {
+      const propertyFeaturesLower = property.features.map((f: string) => f.toLowerCase());
+      const hasAllAmenities = amenitiesFilter.every((amenity) =>
+        propertyFeaturesLower.some((f: string) => f.includes(amenity.toLowerCase()))
+      );
+      if (!hasAllAmenities) {
+        return false;
+      }
+    }
+
+    return true;
+  });
 
   if (loading) {
     return (
@@ -167,7 +267,7 @@ const PropertiesSection = () => {
       <div className="container mx-auto px-4">
         {/* Properties Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-          {properties.map((property, index) => {
+          {filteredProperties.map((property, index) => {
             const bestCouponPercent = getBestCouponPercent(property, coupons);
             return (
             <motion.div
@@ -186,7 +286,7 @@ const PropertiesSection = () => {
                   {/* Badges */}
                   <div className="absolute top-4 left-4 flex flex-col gap-2">
                     {bestCouponPercent > 0 && (
-                      <div className="bg-emerald-500 text-white px-3 py-1 rounded-full shadow-sm text-xs font-semibold">
+                      <div className="bg-gradient-to-r from-green-500 to-green-600 text-white px-3 py-1 rounded-full shadow-sm text-xs font-semibold">
                         Save up to {bestCouponPercent}%
                       </div>
                     )}
@@ -211,7 +311,7 @@ const PropertiesSection = () => {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <MapPin className="w-4 h-4" />
-                      <span className="text-sm">{property.address || 'Location'}</span>
+                      <span className="text-sm">{getCityName(property)}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
@@ -266,21 +366,23 @@ const PropertiesSection = () => {
           })}
         </div>
 
-        {/* View All Button */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="text-center mt-12"
-        >
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="border-2 border-primary text-primary px-8 py-3 rounded-full font-medium hover:bg-primary hover:text-primary-foreground transition-all"
+        {/* View All Button - Only show when there are 7 or more properties and count is a multiple of 7 */}
+        {filteredProperties.length >= 7 && filteredProperties.length % 7 === 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center mt-12"
           >
-            View All Properties
-          </motion.button>
-        </motion.div>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="border-2 border-primary text-primary px-8 py-3 rounded-full font-medium hover:bg-primary hover:text-primary-foreground transition-all"
+            >
+              View All Properties
+            </motion.button>
+          </motion.div>
+        )}
       </div>
     </section>
   );

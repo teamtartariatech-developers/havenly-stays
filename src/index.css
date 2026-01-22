@@ -4,12 +4,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Resort Booking Design System - Fresh Green & White */
+/* Resort Booking Design System - Green, Blue & Orange */
 
 @layer base {
   :root {
-    /* Core palette - Deep forest green with gradient whites */
-    --background: 140 15% 98%;
+    /* Core palette - Forest green with ocean blue and sunset orange accents */
+    --background: 145 15% 98%;
     --foreground: 155 35% 8%;
 
     --card: 0 0% 100%;
@@ -18,8 +18,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 155 35% 8%;
 
-    /* Primary - Deep forest green */
-    --primary: 155 55% 18%;
+    /* Primary - Forest green */
+    --primary: 155 55% 22%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary - Soft sage */
@@ -29,20 +29,24 @@
     --muted: 145 12% 92%;
     --muted-foreground: 155 15% 40%;
 
-    /* Accent - Rich emerald */
-    --accent: 160 55% 30%;
+    /* Accent - Ocean blue */
+    --accent: 215 70% 40%;
     --accent-foreground: 0 0% 100%;
+
+    /* Additional accent - Sunset orange */
+    --accent-orange: 30 100% 50%;
+    --accent-orange-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 145 18% 88%;
     --input: 145 18% 88%;
-    --ring: 155 55% 18%;
+    --ring: 155 55% 22%;
 
     --radius: 1rem;
 
-    /* Custom tokens - Deeper greens */
+    /* Custom tokens - Green and blue gradients */
     --gradient-hero: linear-gradient(135deg, hsl(158 60% 8%) 0%, hsl(155 55% 15%) 40%, hsl(152 50% 22%) 100%);
     --gradient-subtle: linear-gradient(180deg, hsl(145 20% 98%) 0%, hsl(150 15% 96%) 50%, hsl(145 18% 97%) 100%);
     --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(145 20% 97%) 100%);
@@ -86,15 +90,19 @@
     --muted: 150 15% 15%;
     --muted-foreground: 140 15% 60%;
 
-    --accent: 158 45% 50%;
+    --accent: 215 60% 55%;
     --accent-foreground: 150 30% 5%;
+
+    /* Additional accent - Sunset orange */
+    --accent-orange: 30 90% 60%;
+    --accent-orange-foreground: 150 30% 5%;
 
     --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 150 15% 18%;
-    --input: 150 15% 18%;
-    --ring: 152 50% 45%;
+    --border: 220 20% 18%;
+    --input: 220 20% 18%;
+    --ring: 215 60% 55%;
 
     --sidebar-background: 150 20% 6%;
     --sidebar-foreground: 140 20% 90%;
@@ -127,7 +135,7 @@
 @layer utilities {
   .text-gradient {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(152 45% 25%) 0%, hsl(158 50% 40%) 100%);
+    background-image: linear-gradient(135deg, hsl(155 55% 22%) 0%, hsl(215 70% 40%) 100%);
   }
 
   .bg-hero-gradient {

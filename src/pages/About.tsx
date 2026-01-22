@@ -42,9 +42,9 @@ const About = () => {
   useEffect(() => {
     const canonical = `${window.location.origin}/about`;
     updatePageMeta({
-      title: "About Havenly Stays | Curated Lakeside Retreats",
+      title: "About Pavana Agro Tourism | Curated Lakeside Retreats",
       description:
-        "Learn about Havenly Stays, our passion for nature, and our commitment to safe, sustainable stays around Pawna Lake.",
+        "Learn about Pavana Agro Tourism, our passion for nature, and our commitment to safe, sustainable stays around Pawna Lake.",
       canonical,
       ogImage:
         "https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=1200&h=630&fit=crop",
@@ -76,7 +76,7 @@ const About = () => {
               <span className="block text-white/80">Since 2019</span>
             </h1>
             <p className="text-white/70 text-lg md:text-xl leading-relaxed">
-              Welcome to Gecestays, your premier destination for luxury villa rentals and lakeside retreats. 
+              Welcome to Pavana Agro Tourism, the registered business behind our curated lakeside stays. 
               What started as a passion for nature has evolved into a curated collection of stays that blend 
               modern elegance with the raw beauty of the Pawna Lake region.
             </p>
@@ -214,7 +214,7 @@ const About = () => {
             className="text-center mb-12"
           >
             <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Why Choose Gecestays?
+              Why Choose Pavana Agro Tourism?
             </h2>
           </motion.div>
           
@@ -275,7 +275,7 @@ const About = () => {
             </h2>
             <p className="text-white/80 text-lg md:text-xl mb-8 max-w-2xl mx-auto leading-relaxed">
               Whether you're looking for a weekend escape, a romantic retreat, or a family vacation, 
-              Gecestays is your perfect destination.
+              Pavana Agro Tourism is your perfect destination.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -286,16 +286,13 @@ const About = () => {
               >
                 Book Your Stay
               </Button>
-              <Button 
-                variant="outline"
-                size="lg"
-                as="a"
-                href="tel:+919226869678"
-                className="text-white border-white hover:bg-white/10 px-8 py-4"
+              <a
+                href="tel:+918668322633"
+                className="inline-flex items-center justify-center px-8 py-4 text-white border border-white rounded-md hover:bg-white/10 transition-colors"
               >
                 <Phone className="mr-2 w-5 h-5" />
                 Call Us Now
-              </Button>
+              </a>
             </div>
           </motion.div>
         </div>

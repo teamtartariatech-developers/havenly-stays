@@ -5,12 +5,12 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { DayPicker } from "react-day-picker";
 import { format, addDays, differenceInDays } from "date-fns";
-import { 
-  ChevronLeft, 
-  MapPin, 
-  Star, 
-  Users, 
-  Calendar as CalendarIcon, 
+import {
+  ChevronLeft,
+  MapPin,
+  Star,
+  Users,
+  Calendar as CalendarIcon,
   CreditCard,
   Wifi,
   Car,
@@ -33,7 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { api, Accommodation } from "@/services/api";
+import { api, Accommodation, City } from "@/services/api";
 import { initiatePayment, handlePaymentRedirect } from "@/utils/payment";
 import { updatePageMeta } from "@/utils/seo";
 import { Loader2 } from "lucide-react";
@@ -66,9 +66,10 @@ const BookingPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const [property, setProperty] = useState<Accommodation | null>(null);
   const [recommended, setRecommended] = useState<Accommodation[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<{ from: Date; to?: Date } | undefined>();
@@ -80,11 +81,12 @@ const BookingPage = () => {
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
-  
+  const [currentStep, setCurrentStep] = useState(1);
+
   // Touch/swipe handlers for image gallery
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
-  
+
   // Coupon State
   const [coupon, setCoupon] = useState('');
   const [couponApplied, setCouponApplied] = useState(false);
@@ -92,7 +94,7 @@ const BookingPage = () => {
   const [allAvailableCoupons, setAllAvailableCoupons] = useState<Coupon[]>([]);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponError, setCouponError] = useState<string>('');
-  
+
   const getDateStringsInRange = (start: Date, end: Date) => {
     const dates: string[] = [];
     let current = new Date(start);
@@ -106,7 +108,7 @@ const BookingPage = () => {
     }
     return dates;
   };
-  
+
   // Form State
   const [formData, setFormData] = useState({
     name: "",
@@ -156,7 +158,7 @@ const BookingPage = () => {
     if (!property) return;
     const canonical = `${window.location.origin}/book/${property.id}`;
     updatePageMeta({
-      title: `${property.name} | Book Your Stay - Havenly Stays`,
+      title: `${property.name} | Book Your Stay - Pavana Agro Tourism`,
       description:
         property.description ||
         `Reserve ${property.name} at Pawna Lake. Explore amenities, pricing, and availability to plan your stay.`,
@@ -211,6 +213,38 @@ const BookingPage = () => {
     fetchCoupons();
   }, []);
 
+  // Fetch cities
+  useEffect(() => {
+    const fetchCities = async () => {
+      try {
+        const citiesData = await api.getCities();
+        setCities(citiesData);
+      } catch (error) {
+        console.error('Error fetching cities:', error);
+      }
+    };
+    fetchCities();
+  }, []);
+
+  // Helper function to get city name from cityId
+  const getCityName = (cityId?: number, fallbackAddress?: string): string => {
+    // If no cityId, use fallback
+    if (!cityId) {
+      return fallbackAddress || property?.address || 'Location';
+    }
+
+    // Find city in the cities array
+    const city = cities.find(c => c.id === cityId);
+
+    // If city found, return its name
+    if (city?.name) {
+      return city.name;
+    }
+
+    // If cities are still loading or city not found, use fallback
+    return fallbackAddress || property?.address || 'Location';
+  };
+
   const nextImage = () => {
     if (!property?.images) return;
     setCurrentImageIndex((prev) => (prev + 1) % property.images.length);
@@ -245,7 +279,7 @@ const BookingPage = () => {
     const distance = touchStart - touchEnd;
     const isLeftSwipe = distance > minSwipeDistance;
     const isRightSwipe = distance < -minSwipeDistance;
-    
+
     if (isLeftSwipe) {
       nextImage();
     }
@@ -373,7 +407,7 @@ const BookingPage = () => {
     const maxRooms = Math.max(1, Math.min(propertyRooms, availabilityCap));
     const validRooms = Math.max(1, Math.min(newRooms, maxRooms));
     setRooms(validRooms);
-    
+
     setRoomGuests(prev => {
       let updated: RoomGuest[];
       if (validRooms > prev.length) {
@@ -387,11 +421,11 @@ const BookingPage = () => {
       } else {
         updated = prev;
       }
-      
+
       // Update food counts to match new total guests
       const newTotalGuests = updated.reduce((sum, r) => sum + r.adults + r.children, 0);
       const currentFoodTotal = foodCounts.veg + foodCounts.nonveg + foodCounts.jain;
-      
+
       if (currentFoodTotal > newTotalGuests) {
         // Scale down food counts proportionally
         const ratio = newTotalGuests / currentFoodTotal;
@@ -408,18 +442,18 @@ const BookingPage = () => {
           veg: prev.veg + remaining
         }));
       }
-      
+
       return updated;
     });
   };
 
   const handleRoomGuestChange = (index: number, type: 'adults' | 'children', value: number) => {
     const maxPeoplePerRoom = property?.capacity || 4;
-    
+
     setRoomGuests(prev => {
       const newGuests = [...prev];
       const currentRoom = newGuests[index];
-      
+
       let newValue = Math.max(0, value);
       if (type === 'adults') newValue = Math.max(1, newValue); // Min 1 adult per room
 
@@ -442,18 +476,18 @@ const BookingPage = () => {
       const newValue = Math.max(0, prev[type] + delta);
       const currentTotal = prev.veg + prev.nonveg + prev.jain;
       const newTotal = currentTotal - prev[type] + newValue;
-      
+
       if (newTotal > totalGuests) return prev;
-      
+
       return { ...prev, [type]: newValue };
     });
   };
 
   const pricePerNight = property?.adult_price || property?.price || 0;
   const childPrice = property?.child_price || 0;
-  
-  const nights = dateRange?.from && dateRange?.to 
-    ? differenceInDays(dateRange.to, dateRange.from) 
+
+  const nights = dateRange?.from && dateRange?.to
+    ? differenceInDays(dateRange.to, dateRange.from)
     : 0;
 
   // Calculate total based on per-person pricing if available
@@ -517,7 +551,7 @@ const BookingPage = () => {
       setCoupon(code);
       setCouponApplied(true);
       setCouponError('');
-      
+
       toast({
         title: "Coupon Applied!",
         description: `Discount of ₹${foundCoupon.discountType === 'fixed' ? foundCoupon.discount : foundCoupon.discount + '%'} applied successfully.`,
@@ -577,7 +611,7 @@ const BookingPage = () => {
     }
 
     setIsLoading(true);
-    
+
     try {
       // Create booking
       const bookingPayload = {
@@ -601,7 +635,7 @@ const BookingPage = () => {
       };
 
       const bookingResponse = await api.createBooking(bookingPayload);
-      
+
       if (!bookingResponse.success && !bookingResponse.booking_id) {
         throw new Error(bookingResponse.error || 'Failed to create booking');
       }
@@ -619,10 +653,10 @@ const BookingPage = () => {
       };
 
       const paymentResponse = await initiatePayment(paymentPayload);
-      
+
       // Handle payment redirect
       handlePaymentRedirect(paymentResponse);
-      
+
     } catch (error: any) {
       console.error("Booking error:", error);
       toast({
@@ -751,12 +785,12 @@ const BookingPage = () => {
                 <h3 class="title">${property.name} Contact Info</h3>
                 <div class="card">
                   <p><strong>${property.name}</strong></p>
-                  <p>At- ${property.address || "Pawna Lake"}</p>
+                  <p>At- ${getCityName(property.cityId || property.city_id, property.address) || "Pawna Lake"}</p>
                   <p>pawna lake</p>
                   <p><a class="link" href="http://maps.google.com/maps?q=${property.latitude},${property.longitude}">Google Maps Link</a></p>
                   <div class="divider"></div>
                   <p><strong>Email - </strong><a class="link" href="mailto:campatpawna@gmail.com">campatpawna@gmail.com</a></p>
-                  <p><strong>Contact Number - </strong>Tushar Thakar - 9175106307</p>
+                  <p><strong>Contact Number - </strong>Tushar Thakar - 8668322633</p>
                 </div>
                 <div class="divider"></div>
                 <p><strong>Note</strong> - Please do not reply to this email. It has been sent from an email account that is not monitored. To ensure that you receive communication related to your booking from Nirwana Stays , please add <a class="link" href="mailto:bookings@nirwanastays.com"><strong>bookings@nirwanastays.com</strong></a> to your contact list and address book.</p>
@@ -814,22 +848,22 @@ const BookingPage = () => {
     }
   };
 
-  const images = property.images && property.images.length > 0 
-    ? property.images 
+  const images = property.images && property.images.length > 0
+    ? property.images
     : ["https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&h=800&fit=crop"];
 
-  const supportPhone = "+919226869678";
+  const supportPhone = "+918668322633";
   const stayRangeText =
     dateRange?.from && dateRange?.to
       ? `${format(dateRange.from, "dd MMM yyyy")} to ${format(dateRange.to, "dd MMM yyyy")}`
       : "my preferred dates";
   const whatsappMessage = `Hi, I would like to enquire about ${property.name}. I am planning a stay from ${stayRangeText}. Please share availability and best offers.`;
-  const whatsappLink = `https://wa.me/919226869678?text=${encodeURIComponent(whatsappMessage)}`;
+  const whatsappLink = `https://wa.me/918668322633?text=${encodeURIComponent(whatsappMessage)}`;
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] pb-20 font-sans">
       {/* Hero Gallery Section - Swipeable */}
-      <div 
+      <div
         className="relative h-[60vh] lg:h-[70vh] w-full overflow-hidden bg-black cursor-pointer select-none"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
@@ -837,24 +871,24 @@ const BookingPage = () => {
         onClick={() => openLightbox(currentImageIndex)}
       >
         <AnimatePresence mode="wait">
-          <motion.img 
+          <motion.img
             key={currentImageIndex}
             initial={{ opacity: 0, scale: 1.1 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.7 }}
-            src={images[currentImageIndex]} 
-            alt={property.name} 
+            src={images[currentImageIndex]}
+            alt={property.name}
             className="absolute inset-0 w-full h-full object-cover"
             draggable={false}
           />
         </AnimatePresence>
-        
+
         {/* Overlays */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30" />
-        
+
         {/* Navigation Controls */}
-        <button 
+        <button
           onClick={(e) => {
             e.stopPropagation();
             navigate(-1);
@@ -863,6 +897,19 @@ const BookingPage = () => {
         >
           <ChevronLeft size={24} className="group-hover:-translate-x-0.5 transition-transform" />
         </button>
+
+        {/* Show Images Button */}
+        {images.length > 1 && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              openLightbox(currentImageIndex);
+            }}
+            className="absolute top-6 right-4 md:right-8 p-3 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-all border border-white/20 group z-30"
+          >
+            <span className="text-sm font-medium">Show Images</span>
+          </button>
+        )}
 
         {/* Image Dots */}
         {images.length > 1 && (
@@ -874,9 +921,8 @@ const BookingPage = () => {
                   e.stopPropagation();
                   setCurrentImageIndex(idx);
                 }}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  idx === currentImageIndex ? "bg-white w-6" : "bg-white/50 hover:bg-white/80"
-                }`}
+                className={`w-2 h-2 rounded-full transition-all ${idx === currentImageIndex ? "bg-white w-6" : "bg-white/50 hover:bg-white/80"
+                  }`}
               />
             ))}
           </div>
@@ -896,15 +942,15 @@ const BookingPage = () => {
               </span>
               <span className="flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-2 rounded-full text-sm font-medium text-white">
                 <MapPin size={16} />
-                {property.address || 'Scenic Location'}
+                {property ? getCityName(property.cityId || property.city_id, property.address) : 'Location'}
               </span>
             </motion.div>
           </div>
         </div>
       </div>
 
-      {/* Title and Description Section - Below Image */}
-      <div className="container mx-auto px-4 pt-8 pb-6">
+      {/* Title Section - Below Image */}
+      <div className="container mx-auto px-4 pt-8 pb-0">
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -914,17 +960,40 @@ const BookingPage = () => {
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold tracking-tight mb-6 text-gray-900">
             {property.name}
           </h1>
-          
-          {/* Description with Show More */}
-          {property.description && (
-            <div className="mb-6">
-              <div className={`text-gray-600 text-lg leading-relaxed ${!showFullDescription ? 'line-clamp-3' : ''}`}>
-                {property.description}
+
+          {/* Rating and Price */}
+          <div className="flex items-center justify-between flex-wrap gap-4 pt-4 border-t border-gray-200">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1.5 bg-yellow-50 px-4 py-2 rounded-full text-sm font-medium text-gray-900">
+                <Star size={16} className="fill-yellow-400 text-yellow-400" />
+                4.8 (128 reviews)
+              </span>
+            </div>
+            <div className="text-right">
+              <div className="flex items-baseline justify-end gap-2">
+                <span className="text-3xl md:text-4xl font-bold text-gray-900">₹{pricePerNight}</span>
+                <span className="text-gray-600 font-medium">/ night</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Description with Show More - positioned next to price */}
+          {property.description && property.description.trim() && (
+            <div className="mt-6 relative z-10 pb-24">
+              <div className="relative">
+                <div
+                  className={`text-gray-600 text-base leading-relaxed transition-all prose prose-sm max-w-none ${!showFullDescription ? "max-h-24 overflow-hidden" : ""
+                    }`}
+                  dangerouslySetInnerHTML={{ __html: property.description }}
+                />
+                {!showFullDescription && property.description.length > 150 && (
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent via-transparent to-[#F8F9FA]" />
+                )}
               </div>
               {property.description.length > 150 && (
                 <button
                   onClick={() => setShowFullDescription(!showFullDescription)}
-                  className="mt-4 flex items-center gap-2 text-primary font-semibold hover:text-primary/80 transition-colors group"
+                  className="mt-3 inline-flex items-center gap-2 text-primary font-semibold hover:text-primary/80 transition-colors group relative z-30"
                 >
                   {showFullDescription ? (
                     <>
@@ -941,37 +1010,21 @@ const BookingPage = () => {
               )}
             </div>
           )}
-
-          {/* Rating and Price */}
-          <div className="flex items-center justify-between flex-wrap gap-4 pt-4 border-t border-gray-200">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1.5 bg-yellow-50 px-4 py-2 rounded-full text-sm font-medium text-gray-900">
-                <Star size={16} className="fill-yellow-400 text-yellow-400" /> 
-                4.8 (128 reviews)
-              </span>
-            </div>
-            <div className="text-right">
-              <div className="flex items-baseline justify-end gap-2">
-                <span className="text-3xl md:text-4xl font-bold text-gray-900">₹{pricePerNight}</span>
-                <span className="text-gray-600 font-medium">/ night</span>
-              </div>
-            </div>
-          </div>
         </motion.div>
       </div>
 
-      <div className="container mx-auto px-4 mt-8 relative z-10">
+      <div className={`container mx-auto px-4 relative z-10 ${property.description && property.description.trim() ? "mt-0" : "mt-8"}`}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-          
+
           {/* Left Column: Details & Form */}
           <div className="lg:col-span-2 space-y-8">
-            
-            {/* Property Highlights */}
-            <motion.div 
+
+            {/* Amenities & Features (moved up) */}
+            <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.4 }}
-              className="bg-white rounded-3xl p-6 md:p-8 shadow-card border border-gray-100 mt-6"
+              className="bg-white rounded-3xl p-6 md:p-8 shadow-card border border-gray-100"
             >
               <h3 className="text-xl font-bold mb-6 text-gray-900">Amenities & Features</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -989,7 +1042,7 @@ const BookingPage = () => {
                   else if (f.includes('breakfast') || f.includes('food')) Icon = Coffee;
                   else if (f.includes('tv')) Icon = Tv;
                   else if (f.includes('kitchen')) Icon = Utensils;
-                  
+
                   return (
                     <div key={i} className="flex items-center gap-3 text-gray-600">
                       <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-primary">
@@ -1002,260 +1055,15 @@ const BookingPage = () => {
               </div>
             </motion.div>
 
-            {/* Booking Form */}
-            <motion.div 
+            {/* Calendar Block - moved down */}
+            <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              className="bg-white rounded-3xl shadow-card border border-gray-100 overflow-hidden"
-            >
-              {/* Header */}
-              <div className="bg-gray-50/50 p-6 md:p-8 border-b border-gray-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm">
-                    <User size={24} />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Guest Details</h2>
-                    <p className="text-gray-500 text-sm">Who should we send the booking details to?</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="p-6 md:p-8 space-y-8">
-                {/* Personal Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="name" className="text-gray-700 font-medium ml-1">Full Name</Label>
-                    <div className="relative group">
-                      <User className="absolute left-4 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
-                      <Input 
-                        id="name" 
-                        placeholder="John Doe" 
-                        className="pl-12 rounded-xl border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary h-12 bg-gray-50/30 transition-all"
-                        value={formData.name}
-                        onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="text-gray-700 font-medium ml-1">Email Address</Label>
-                    <div className="relative group">
-                      <Mail className="absolute left-4 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
-                      <Input 
-                        id="email" 
-                        type="email" 
-                        placeholder="john@example.com" 
-                        className="pl-12 rounded-xl border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary h-12 bg-gray-50/30 transition-all"
-                        value={formData.email}
-                        onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="phone" className="text-gray-700 font-medium ml-1">Phone Number</Label>
-                    <div className="relative group">
-                      <Phone className="absolute left-4 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
-                      <Input 
-                        id="phone" 
-                        type="tel" 
-                        placeholder="+91 98765 43210" 
-                        className="pl-12 rounded-xl border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary h-12 bg-gray-50/30 transition-all"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-                
-                {/* Room Configuration */}
-                <div>
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900">Room Configuration</h3>
-                      <p className="text-sm text-gray-500">Customize guests per room</p>
-                    </div>
-                    <div className="flex items-center gap-4 bg-gray-50 p-1.5 rounded-xl border border-gray-200">
-                      <button
-                        type="button"
-                        onClick={() => handleRoomsChange(rooms - 1)}
-                        disabled={rooms <= 1}
-                        className="w-9 h-9 rounded-lg bg-white shadow-sm border border-gray-200 flex items-center justify-center text-gray-600 hover:text-primary hover:border-primary transition-all disabled:opacity-50 disabled:hover:border-gray-200 disabled:hover:text-gray-600"
-                      >
-                        <span className="text-lg font-medium leading-none mb-0.5">−</span>
-                      </button>
-                      <span className="text-base font-bold text-gray-900 w-16 text-center">{rooms} Room{rooms > 1 ? 's' : ''}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRoomsChange(rooms + 1)}
-                        disabled={rooms >= maxRoomsForSelection}
-                        className="w-9 h-9 rounded-lg bg-white shadow-sm border border-gray-200 flex items-center justify-center text-gray-600 hover:text-primary hover:border-primary transition-all disabled:opacity-50 disabled:hover:border-gray-200 disabled:hover:text-gray-600"
-                      >
-                        <span className="text-lg font-medium leading-none mb-0.5">+</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    {roomGuests.slice(0, rooms).map((room, idx) => (
-                      <motion.div 
-                        key={`room-${idx}`}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.1 }}
-                        className="border border-gray-100 rounded-2xl p-4 hover:border-primary/30 hover:shadow-md transition-all bg-white"
-                      >
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-                              {idx + 1}
-                            </div>
-                            <span className="font-semibold text-gray-700">Room {idx + 1}</span>
-                          </div>
-                          
-                          <div className="flex items-center gap-6">
-                            {/* Adults Control */}
-                            <div className="flex flex-col items-center gap-1">
-                              <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Adults</span>
-                              <div className="flex items-center gap-3 bg-gray-50 rounded-full p-1 border border-gray-100">
-                                <button
-                                  type="button"
-                                  onClick={() => handleRoomGuestChange(idx, 'adults', room.adults - 1)}
-                                  disabled={room.adults <= 1}
-                                  className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition-all disabled:opacity-40"
-                                >
-                                  −
-                                </button>
-                                <span className="font-bold text-gray-900 w-4 text-center">{room.adults}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRoomGuestChange(idx, 'adults', room.adults + 1)}
-                                  disabled={room.adults + room.children >= (property?.capacity || 4)}
-                                  className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition-all disabled:opacity-40"
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Divider */}
-                            <div className="w-px h-10 bg-gray-100 hidden sm:block" />
-
-                            {/* Children Control */}
-                            <div className="flex flex-col items-center gap-1">
-                              <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Children</span>
-                              <div className="flex items-center gap-3 bg-gray-50 rounded-full p-1 border border-gray-100">
-                                <button
-                                  type="button"
-                                  onClick={() => handleRoomGuestChange(idx, 'children', room.children - 1)}
-                                  disabled={room.children <= 0}
-                                  className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition-all disabled:opacity-40"
-                                >
-                                  −
-                                </button>
-                                <span className="font-bold text-gray-900 w-4 text-center">{room.children}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRoomGuestChange(idx, 'children', room.children + 1)}
-                                  disabled={room.adults + room.children >= (property?.capacity || 4)}
-                                  className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition-all disabled:opacity-40"
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Food Preferences - Compact Green Theme */}
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900">Meal Preferences</h3>
-                      <p className="text-sm text-gray-500">Select dietary requirements</p>
-                    </div>
-                    <div className="flex items-center gap-2 bg-green-50 px-3 py-1 rounded-full border border-green-100">
-                       <UtensilsCrossed className="w-4 h-4 text-primary" />
-                       <span className={`text-sm font-semibold ${
-                          (foodCounts.veg + foodCounts.nonveg + foodCounts.jain) === totalGuests 
-                            ? 'text-primary' 
-                            : 'text-orange-600'
-                        }`}>
-                          {foodCounts.veg + foodCounts.nonveg + foodCounts.jain} / {totalGuests}
-                        </span>
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-3">
-                    {(['veg', 'nonveg', 'jain'] as const).map((type) => (
-                      <div key={type} className="flex items-center justify-between bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-2 h-2 rounded-full ${
-                            type === 'veg' ? 'bg-green-600' : 
-                            type === 'nonveg' ? 'bg-red-600' : 
-                            'bg-orange-500'
-                          }`} />
-                          <span className="font-semibold text-gray-700 capitalize">
-                            {type === 'nonveg' ? 'Non-Veg' : type}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-3">
-                          <button
-                            type="button"
-                            onClick={() => handleFoodCount(type, -1)}
-                            disabled={foodCounts[type] <= 0}
-                            className="w-8 h-8 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center text-primary hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <span className="pb-0.5 text-lg">−</span>
-                          </button>
-                          <span className="font-bold text-gray-900 w-5 text-center">{foodCounts[type]}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleFoodCount(type, 1)}
-                            disabled={(foodCounts.veg + foodCounts.nonveg + foodCounts.jain) >= totalGuests}
-                            className="w-8 h-8 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center text-primary hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <span className="pb-0.5 text-lg">+</span>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                   <div className="mt-2 text-right">
-                      <p className="text-xs text-gray-400">
-                        Total guests: {totalGuests}
-                      </p>
-                    </div>
-                </div>
-                
-                <div className="space-y-2 pt-2">
-                  <Label htmlFor="requests" className="text-gray-700 font-medium ml-1">Special Requests</Label>
-                  <textarea 
-                    id="requests" 
-                    className="w-full min-h-[100px] rounded-xl border border-gray-200 bg-white p-4 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none shadow-sm placeholder:text-gray-400"
-                    placeholder="Any dietary requirements, allergies, or special occasions?"
-                    value={formData.specialRequests}
-                    onChange={(e) => setFormData({...formData, specialRequests: e.target.value})}
-                  />
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Date Selection */}
-            <motion.div 
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.6 }}
-              className="bg-white rounded-3xl p-6 md:p-8 shadow-card border border-gray-100"
+              transition={{ delay: 0.45 }}
+              className={`bg-white rounded-3xl p-6 md:p-8 shadow-card border border-gray-100 relative z-20 transition-all duration-500 ease-in-out ${property.description && property.description.trim()
+                ? (showFullDescription ? "mt-8" : "-mt-20")
+                : "mt-0"
+                }`}
             >
               <h2 className="text-2xl font-bold mb-6 text-gray-900">Select Dates</h2>
               <div className="flex justify-center">
@@ -1278,11 +1086,389 @@ const BookingPage = () => {
                 </p>
               )}
             </motion.div>
+
+            {/* Booking Form */}
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="bg-white rounded-3xl shadow-card border border-gray-100 overflow-hidden"
+            >
+              {/* Header with Timeline */}
+              <div className="bg-primary/10 p-6 md:p-8 border-b border-primary/10">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm">
+                    <User size={24} />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-primary">Guest Details</h2>
+                    <p className="text-primary/80 text-sm">Who should we send the booking details to?</p>
+                  </div>
+                </div>
+
+                {/* Timeline Progress Bar */}
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-gray-500">Personal Info</span>
+                    <span className="text-xs font-medium text-gray-500">Room Setup</span>
+                    <span className="text-xs font-medium text-gray-500">Meal Preferences</span>
+                  </div>
+                  <div className="relative">
+                    <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-primary to-primary/80 transition-all duration-500 ease-out"
+                        style={{ width: `${(currentStep / 3) * 100}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between -mt-2 relative z-10">
+                      {[1, 2, 3].map((step) => (
+                        <div key={step} className="flex flex-col items-center">
+                          <div
+                            className={`w-4 h-4 rounded-full border-2 transition-all duration-300 ${step < currentStep
+                              ? 'bg-primary border-primary shadow-sm'
+                              : step === currentStep
+                                ? 'bg-primary border-primary shadow-sm animate-pulse'
+                                : 'bg-white border-gray-300'
+                              }`}
+                          />
+                          <span className={`text-xs mt-1 font-medium ${step <= currentStep ? 'text-primary' : 'text-gray-400'
+                            }`}>
+                            {step}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Multi-Step Form Content */}
+              <div className="relative overflow-hidden">
+                <div className="p-6 md:p-8">
+                  {/* Step Content with Slide Animation */}
+                  <div className="relative min-h-[500px] overflow-hidden">
+                    {/* Step 1: Personal Information */}
+                    <motion.div
+                      className="w-full"
+                      initial={{ opacity: 1, x: 0 }}
+                      animate={{
+                        opacity: currentStep === 1 ? 1 : 0,
+                        x: currentStep === 1 ? 0 : currentStep > 1 ? '-100%' : '100%'
+                      }}
+                      transition={{ duration: 0.5, ease: "easeInOut" }}
+                      style={{
+                        position: currentStep === 1 ? 'relative' : 'absolute',
+                        pointerEvents: currentStep === 1 ? 'auto' : 'none',
+                        visibility: currentStep === 1 ? 'visible' : 'hidden'
+                      }}
+                    >
+                      <div className="space-y-6">
+                        <div className="text-center mb-6">
+                          <h3 className="text-xl font-bold text-gray-900 mb-2">Personal Information</h3>
+                          <p className="text-gray-600 text-sm">Please provide your contact details</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <Label htmlFor="name" className="text-gray-700 font-medium ml-1">Full Name</Label>
+                            <div className="relative group">
+                              <User className="absolute left-4 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
+                              <Input
+                                id="name"
+                                placeholder="John Doe"
+                                className="pl-12 rounded-xl border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary h-12 bg-gray-50/30 transition-all"
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="email" className="text-gray-700 font-medium ml-1">Email Address</Label>
+                            <div className="relative group">
+                              <Mail className="absolute left-4 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
+                              <Input
+                                id="email"
+                                type="email"
+                                placeholder="john@example.com"
+                                className="pl-12 rounded-xl border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary h-12 bg-gray-50/30 transition-all"
+                                value={formData.email}
+                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="phone" className="text-gray-700 font-medium ml-1">Phone Number</Label>
+                            <div className="relative group">
+                              <Phone className="absolute left-4 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
+                              <Input
+                                id="phone"
+                                type="tel"
+                                placeholder="+91 98765 43210"
+                                className="pl-12 rounded-xl border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary h-12 bg-gray-50/30 transition-all"
+                                value={formData.phone}
+                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end pt-4">
+                          <Button
+                            onClick={() => setCurrentStep(2)}
+                            disabled={!formData.name.trim() || !formData.email.trim() || !formData.phone.trim()}
+                            className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white px-8 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
+                          >
+                            Next: Room Setup
+                          </Button>
+                        </div>
+                      </div>
+                    </motion.div>
+
+                    {/* Step 2: Room Configuration */}
+                    <motion.div
+                      className="w-full"
+                      initial={{ opacity: 0, x: '100%' }}
+                      animate={{
+                        opacity: currentStep === 2 ? 1 : 0,
+                        x: currentStep === 2 ? 0 : currentStep > 2 ? '-100%' : '100%'
+                      }}
+                      transition={{ duration: 0.5, ease: "easeInOut" }}
+                      style={{
+                        position: currentStep === 2 ? 'relative' : 'absolute',
+                        pointerEvents: currentStep === 2 ? 'auto' : 'none',
+                        visibility: currentStep === 2 ? 'visible' : 'hidden'
+                      }}
+                    >
+                      <div className="space-y-6">
+                        <div className="text-center mb-6">
+                          <h3 className="text-xl font-bold text-gray-900 mb-2">Room Configuration</h3>
+                          <p className="text-gray-600 text-sm">Customize guests per room</p>
+                        </div>
+
+                        <div className="flex items-center justify-between mb-6">
+                          <div>
+                            <h4 className="text-lg font-bold text-gray-900">Number of Rooms</h4>
+                            <p className="text-sm text-gray-500">Select how many rooms you need</p>
+                          </div>
+                          <div className="flex items-center gap-4 bg-gray-50 p-1.5 rounded-xl border border-gray-200">
+                            <button
+                              type="button"
+                              onClick={() => handleRoomsChange(rooms - 1)}
+                              disabled={rooms <= 1}
+                              className="w-9 h-9 rounded-lg bg-white shadow-sm border border-gray-200 flex items-center justify-center text-gray-600 hover:text-primary hover:border-primary transition-all disabled:opacity-50 disabled:hover:border-gray-200 disabled:hover:text-gray-600"
+                            >
+                              <span className="text-lg font-medium leading-none mb-0.5">−</span>
+                            </button>
+                            <span className="text-base font-bold text-gray-900 w-16 text-center">{rooms} Room{rooms > 1 ? 's' : ''}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRoomsChange(rooms + 1)}
+                              disabled={rooms >= maxRoomsForSelection}
+                              className="w-9 h-9 rounded-lg bg-white shadow-sm border border-gray-200 flex items-center justify-center text-gray-600 hover:text-primary hover:border-primary transition-all disabled:opacity-50 disabled:hover:border-gray-200 disabled:hover:text-gray-600"
+                            >
+                              <span className="text-lg font-medium leading-none mb-0.5">+</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          {roomGuests.slice(0, rooms).map((room, idx) => (
+                            <motion.div
+                              key={`room-${idx}`}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: idx * 0.1 }}
+                              className="border border-gray-100 rounded-2xl p-4 hover:border-primary/30 hover:shadow-md transition-all bg-white"
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                                    {idx + 1}
+                                  </div>
+                                  <span className="font-semibold text-gray-700">Room {idx + 1}</span>
+                                </div>
+
+                                <div className="flex items-center gap-6">
+                                  {/* Adults Control */}
+                                  <div className="flex flex-col items-center gap-1">
+                                    <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Adults</span>
+                                    <div className="flex items-center gap-3 bg-gray-50 rounded-full p-1 border border-gray-100">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRoomGuestChange(idx, 'adults', room.adults - 1)}
+                                        disabled={room.adults <= 1}
+                                        className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition-all disabled:opacity-40"
+                                      >
+                                        −
+                                      </button>
+                                      <span className="font-bold text-gray-900 w-4 text-center">{room.adults}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRoomGuestChange(idx, 'adults', room.adults + 1)}
+                                        disabled={room.adults + room.children >= (property?.capacity || 4)}
+                                        className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition-all disabled:opacity-40"
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Divider */}
+                                  <div className="w-px h-10 bg-gray-100 hidden sm:block" />
+
+                                  {/* Children Control */}
+                                  <div className="flex flex-col items-center gap-1">
+                                    <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Children</span>
+                                    <div className="flex items-center gap-3 bg-gray-50 rounded-full p-1 border border-gray-100">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRoomGuestChange(idx, 'children', room.children - 1)}
+                                        disabled={room.children <= 0}
+                                        className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition-all disabled:opacity-40"
+                                      >
+                                        −
+                                      </button>
+                                      <span className="font-bold text-gray-900 w-4 text-center">{room.children}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRoomGuestChange(idx, 'children', room.children + 1)}
+                                        disabled={room.adults + room.children >= (property?.capacity || 4)}
+                                        className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition-all disabled:opacity-40"
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+
+                        <div className="flex justify-between pt-4">
+                          <Button
+                            onClick={() => setCurrentStep(1)}
+                            variant="outline"
+                            className="px-6 py-3 rounded-xl border-gray-200 hover:border-primary hover:text-primary transition-all"
+                          >
+                            Back
+                          </Button>
+                          <Button
+                            onClick={() => setCurrentStep(3)}
+                            className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white px-8 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
+                          >
+                            Next: Meal Preferences
+                          </Button>
+                        </div>
+                      </div>
+                    </motion.div>
+
+                    {/* Step 3: Meal Preferences */}
+                    <motion.div
+                      className="w-full"
+                      initial={{ opacity: 0, x: '100%' }}
+                      animate={{
+                        opacity: currentStep === 3 ? 1 : 0,
+                        x: currentStep === 3 ? 0 : '100%'
+                      }}
+                      transition={{ duration: 0.5, ease: "easeInOut" }}
+                      style={{
+                        position: currentStep === 3 ? 'relative' : 'absolute',
+                        pointerEvents: currentStep === 3 ? 'auto' : 'none',
+                        visibility: currentStep === 3 ? 'visible' : 'hidden'
+                      }}
+                    >
+                      <div className="space-y-6">
+                        <div className="text-center mb-6">
+                          <h3 className="text-xl font-bold text-gray-900 mb-2">Meal Preferences</h3>
+                          <p className="text-gray-600 text-sm">Choose your dining preferences for the stay</p>
+                        </div>
+
+                        {/* Meal Preferences Content */}
+                        <div className="space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {[
+                              { type: 'veg', label: 'Vegetarian', icon: UtensilsCrossed, color: 'text-green-600' },
+                              { type: 'nonveg', label: 'Non-Vegetarian', icon: Utensils, color: 'text-red-600' },
+                              { type: 'jain', label: 'Jain', icon: Coffee, color: 'text-orange-600' }
+                            ].map((meal) => (
+                              <div key={meal.type} className="text-center">
+                                <div className={`w-16 h-16 mx-auto mb-3 rounded-2xl bg-gray-50 flex items-center justify-center ${meal.color} border-2 border-gray-100 hover:border-primary/30 transition-all`}>
+                                  <meal.icon size={24} />
+                                </div>
+                                <h4 className="font-semibold text-gray-900 mb-2">{meal.label}</h4>
+                                <div className="flex items-center justify-center gap-3 bg-gray-50 rounded-full p-1 border border-gray-100 max-w-fit mx-auto">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleFoodCount(meal.type as keyof FoodCounts, -1)}
+                                    disabled={(foodCounts[meal.type as keyof FoodCounts] || 0) <= 0}
+                                    className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition-all disabled:opacity-40"
+                                  >
+                                    −
+                                  </button>
+                                  <span className="font-bold text-gray-900 w-6 text-center">{foodCounts[meal.type as keyof FoodCounts] || 0}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleFoodCount(meal.type as keyof FoodCounts, 1)}
+                                    className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition-all"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="flex justify-between pt-4">
+                            <Button
+                              onClick={() => setCurrentStep(2)}
+                              variant="outline"
+                              className="px-6 py-3 rounded-xl border-gray-200 hover:border-primary hover:text-primary transition-all"
+                            >
+                              Back
+                            </Button>
+                            <Button
+                              onClick={handleBooking}
+                              disabled={isLoading}
+                              className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white px-8 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isLoading ? "Processing..." : "Complete Booking"}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </div>
+
+                  {/* Special Requests - Always visible at bottom */}
+                  <div className="mt-8 pt-8 border-t border-gray-200">
+                    <div className="space-y-3">
+                      <Label htmlFor="specialRequests" className="text-gray-700 font-medium">Special Requests (Optional)</Label>
+                      <textarea
+                        id="specialRequests"
+                        placeholder="Any special requests or notes for your stay..."
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-gray-50/30 transition-all resize-none"
+                        rows={3}
+                        value={formData.specialRequests}
+                        onChange={(e) => setFormData({ ...formData, specialRequests: e.target.value })}
+                      />
+                      <p className="text-xs text-gray-500">We'll do our best to accommodate your requests</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+
+
+
+            </motion.div>
+
+            {/* (Second date selection removed – calendar now lives only above with description) */}
           </div>
 
           {/* Right Column: Order Summary (Sticky) */}
           <div className="lg:col-span-1">
-            <motion.div 
+            <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.7 }}
@@ -1291,24 +1477,24 @@ const BookingPage = () => {
               <div className="bg-white rounded-3xl p-6 md:p-8 shadow-elevated border border-gray-100 relative overflow-hidden">
                 {/* Decorative background blob */}
                 <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/5 rounded-full blur-3xl" />
-                
+
                 <h3 className="text-xl font-bold mb-6 flex items-center gap-2 relative z-10">
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                     <CreditCard size={16} />
                   </div>
                   Price Details
                 </h3>
-                
+
                 <div className="space-y-4 mb-6 relative z-10">
                   <div className="flex justify-between items-center text-sm p-3 bg-gray-50 rounded-xl">
                     <span className="text-gray-500 font-medium">Dates</span>
                     <span className="font-semibold text-gray-900">
-                      {dateRange?.from ? format(dateRange.from, "MMM dd") : "Select"} 
-                      {" - "} 
+                      {dateRange?.from ? format(dateRange.from, "MMM dd") : "Select"}
+                      {" - "}
                       {dateRange?.to ? format(dateRange.to, "MMM dd") : "Select"}
                     </span>
                   </div>
-                  
+
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-600">₹{pricePerNight} x {nights} nights</span>
                     <span className="font-medium text-gray-900">₹{pricePerNight * nights}</span>
@@ -1323,7 +1509,7 @@ const BookingPage = () => {
                     <span className="text-gray-600">Service Fee (5%)</span>
                     <span className="font-medium text-gray-900">₹{serviceFee}</span>
                   </div>
-                  
+
                   {/* Coupon Section */}
                   <div className="mt-4 pt-4 border-t border-gray-100">
                     {allAvailableCoupons.length > 0 && (
@@ -1404,7 +1590,7 @@ const BookingPage = () => {
                           </button>
                         </div>
                         <p className="text-xs text-gray-600 mt-1">
-                          {appliedCoupon.discountType === 'fixed' 
+                          {appliedCoupon.discountType === 'fixed'
                             ? `₹${appliedCoupon.discount} off`
                             : `${appliedCoupon.discount}% off`}
                         </p>
@@ -1435,7 +1621,7 @@ const BookingPage = () => {
                   </div>
                 </div>
 
-                <Button 
+                <Button
                   onClick={handleBooking}
                   disabled={isLoading || !dateRange?.to}
                   className="w-full h-14 text-lg rounded-2xl bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25 transition-all active:scale-[0.98] font-semibold"
@@ -1457,7 +1643,7 @@ const BookingPage = () => {
                 >
                   Download Booking PDF
                 </Button>
-                
+
                 <p className="text-xs text-center text-gray-400 mt-4 flex items-center justify-center gap-1">
                   <Check size={12} /> Secure Payment Gateway
                 </p>
@@ -1513,135 +1699,138 @@ const BookingPage = () => {
         </section>
 
         {/* Recommended Stays */}
-        {recommended.length > 0 && (
-          <section className="mt-20 mb-12">
-            <h2 className="text-3xl font-display font-bold mb-8 text-gray-900">You May Also Like</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {recommended.map((stay, index) => (
-                <motion.div
-                  key={stay.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                  onClick={() => navigate(`/book/${stay.id}`)}
-                  className="group cursor-pointer bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300"
-                >
-                  <div className="relative h-64 overflow-hidden">
-                    <img
-                      src={Array.isArray(stay.images) && stay.images.length > 0 ? stay.images[0] : "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&h=400&fit=crop"}
-                      alt={stay.name}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-60" />
-                    <div className="absolute bottom-4 left-4 right-4 text-white">
-                      <h3 className="text-xl font-bold mb-1 truncate">{stay.name}</h3>
-                      <div className="flex items-center gap-1 text-sm opacity-90">
-                        <MapPin size={14} />
-                        <span className="truncate">{stay.address || 'Location'}</span>
+        {
+          recommended.length > 0 && (
+            <section className="mt-20 mb-12">
+              <h2 className="text-3xl font-display font-bold mb-8 text-gray-900">You May Also Like</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {recommended.map((stay, index) => (
+                  <motion.div
+                    key={stay.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                    onClick={() => navigate(`/book/${stay.id}`)}
+                    className="group cursor-pointer bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300"
+                  >
+                    <div className="relative h-64 overflow-hidden">
+                      <img
+                        src={Array.isArray(stay.images) && stay.images.length > 0 ? stay.images[0] : "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&h=400&fit=crop"}
+                        alt={stay.name}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-60" />
+                      <div className="absolute bottom-4 left-4 right-4 text-white">
+                        <h3 className="text-xl font-bold mb-1 truncate">{stay.name}</h3>
+                        <div className="flex items-center gap-1 text-sm opacity-90">
+                          <MapPin size={14} />
+                          <span className="truncate">{getCityName(stay.cityId || stay.city_id, stay.address)}</span>
+                        </div>
+                      </div>
+                      <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-gray-900 shadow-sm">
+                        ₹{stay.adult_price || stay.price}/night
                       </div>
                     </div>
-                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-gray-900 shadow-sm">
-                      ₹{stay.adult_price || stay.price}/night
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </section>
-        )}
-      </div>
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+          )
+        }
+      </div >
 
       {/* Image Lightbox */}
       <AnimatePresence>
-        {lightboxOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
-            onClick={closeLightbox}
-          >
-            {/* Close Button */}
-            <button
+        {
+          lightboxOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
               onClick={closeLightbox}
-              className="absolute top-6 right-6 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-colors z-10"
             >
-              <X className="w-6 h-6 text-white" />
-            </button>
-
-            {/* Previous Button */}
-            {images.length > 1 && (
+              {/* Close Button */}
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  lightboxPrev();
-                }}
-                className="absolute left-6 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-colors z-10"
+                onClick={closeLightbox}
+                className="absolute top-6 right-6 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-colors z-10"
               >
-                <ChevronLeft className="w-6 h-6 text-white" />
+                <X className="w-6 h-6 text-white" />
               </button>
-            )}
 
-            {/* Next Button */}
-            {images.length > 1 && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  lightboxNext();
-                }}
-                className="absolute right-6 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-colors z-10"
-              >
-                <ChevronRight className="w-6 h-6 text-white" />
-              </button>
-            )}
+              {/* Previous Button */}
+              {images.length > 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    lightboxPrev();
+                  }}
+                  className="absolute left-6 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-colors z-10"
+                >
+                  <ChevronLeft className="w-6 h-6 text-white" />
+                </button>
+              )}
 
-            {/* Image */}
-            <motion.img
-              key={lightboxIndex}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              src={images[lightboxIndex]}
-              alt={`${property.name} - Image ${lightboxIndex + 1}`}
-              className="max-w-full max-h-[90vh] rounded-2xl object-contain"
-              onClick={(e) => e.stopPropagation()}
-            />
+              {/* Next Button */}
+              {images.length > 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    lightboxNext();
+                  }}
+                  className="absolute right-6 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-colors z-10"
+                >
+                  <ChevronRight className="w-6 h-6 text-white" />
+                </button>
+              )}
 
-            {/* Image Counter */}
-            {images.length > 1 && (
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full text-white text-sm font-medium">
-                {lightboxIndex + 1} / {images.length}
-              </div>
-            )}
+              {/* Image */}
+              <motion.img
+                key={lightboxIndex}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                src={images[lightboxIndex]}
+                alt={`${property.name} - Image ${lightboxIndex + 1}`}
+                className="max-w-full max-h-[90vh] rounded-2xl object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
 
-            {/* Thumbnail Strip */}
-            {images.length > 1 && (
-              <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex gap-2 max-w-[90vw] overflow-x-auto scrollbar-hide px-4">
-                {images.map((img, idx) => (
-                  <button
-                    key={idx}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setLightboxIndex(idx);
-                    }}
-                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
-                      idx === lightboxIndex ? 'border-white scale-110' : 'border-white/30 hover:border-white/60'
-                    }`}
-                  >
-                    <img
-                      src={img}
-                      alt={`Thumbnail ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+              {/* Image Counter */}
+              {images.length > 1 && (
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full text-white text-sm font-medium">
+                  {lightboxIndex + 1} / {images.length}
+                </div>
+              )}
+
+              {/* Thumbnail Strip */}
+              {images.length > 1 && (
+                <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex gap-2 max-w-[90vw] overflow-x-auto scrollbar-hide px-4">
+                  {images.map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLightboxIndex(idx);
+                      }}
+                      className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${idx === lightboxIndex ? 'border-white scale-110' : 'border-white/30 hover:border-white/60'
+                        }`}
+                    >
+                      <img
+                        src={img}
+                        alt={`Thumbnail ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )
+        }
+      </AnimatePresence >
+    </div >
   );
 };
 
